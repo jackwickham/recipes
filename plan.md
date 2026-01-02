@@ -479,13 +479,15 @@ GET    /api/tags                 # List all unique tags (for filter dropdown)
 
 ### Phase 3: LLM Integration
 
-- [ ] Create LLM interface
-- [ ] Implement Google Gemini provider (text + vision)
-- [ ] Build recipe parsing prompts (with qty/timer markers, British units, tag suggestions)
-- [ ] Implement URL import flow (fetch HTML → send to LLM → parse response)
-- [ ] Implement text paste import flow
-- [ ] Implement photo import flow (send to vision LLM → store extracted text)
-- [ ] Build review/edit screen for imported recipes
+- [x] Create LLM interface
+- [x] Implement Google Gemini provider (text + vision) using @google/genai SDK
+- [x] Build recipe parsing prompts (with qty/timer markers, British units, tag suggestions)
+- [x] Implement URL import flow (fetch HTML → send to LLM → parse response)
+- [x] Implement text paste import flow
+- [x] Implement photo import flow (send to vision LLM → store extracted text)
+- [x] Build review/edit screen for imported recipes
+
+> **Note:** Requires `SECRETS_FILE` env var pointing to a YAML file with `google.apiKey`. Models configured in config.yml (defaults: gemini-3-flash-preview, gemini-3-pro-image-preview).
 
 ### Phase 4: Recipe Viewing Features
 

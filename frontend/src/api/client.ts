@@ -1,7 +1,15 @@
 import type {
   RecipeWithDetails,
   CreateRecipeInput,
+  ParsedRecipe,
 } from "@recipes/shared";
+
+export interface ImportResult {
+  sourceType: "photo" | "url" | "text";
+  sourceText: string;
+  sourceContext: string | null;
+  recipe: ParsedRecipe;
+}
 
 const API_BASE = "/api";
 
@@ -68,4 +76,25 @@ export async function updateRating(
 
 export async function getTags(): Promise<string[]> {
   return request<string[]>("/tags");
+}
+
+export async function importFromUrl(url: string): Promise<ImportResult> {
+  return request<ImportResult>("/import/url", {
+    method: "POST",
+    body: JSON.stringify({ url }),
+  });
+}
+
+export async function importFromPhotos(images: string[]): Promise<ImportResult> {
+  return request<ImportResult>("/import/photos", {
+    method: "POST",
+    body: JSON.stringify({ images }),
+  });
+}
+
+export async function importFromText(text: string): Promise<ImportResult> {
+  return request<ImportResult>("/import/text", {
+    method: "POST",
+    body: JSON.stringify({ text }),
+  });
 }
