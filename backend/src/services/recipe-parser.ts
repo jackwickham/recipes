@@ -22,6 +22,10 @@ IMPORTANT RULES:
    - "Beat {{qty:3:}} eggs" (3 eggs, no unit)
 5. Mark timer durations with {{timer:M}} where M is minutes (e.g., {{timer:15}} for 15 minutes)
 6. Suggest appropriate tags from: pasta, indian, mexican, asian, mediterranean, british, american, main, side, dessert, snack, breakfast, quick, vegetarian, vegan, one-pot, make-ahead, soup, salad, baking
+7. SPLIT STEPS: Each step should focus on ONE main action. If a step contains multiple unrelated actions, split them into separate steps. For example:
+   - BAD: "Preheat oven to 180°C. Chop the onions and fry until soft."
+   - GOOD: Step 1: "Preheat the oven to 160°C (fan)." Step 2: "Chop the onions." Step 3: "Fry the onions until soft, about {{timer:5}}."
+   - Keep related actions together (e.g., "add X and stir" is fine), but separate distinct phases of cooking
 
 Return ONLY valid JSON in this exact format:
 {

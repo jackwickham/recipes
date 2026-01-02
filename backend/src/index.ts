@@ -22,8 +22,8 @@ app.use(express.json({ limit: "10mb" }));
 
 // API routes
 app.use("/api/recipes", recipesRouter);
+app.use("/api/recipes", chatRouter); // Chat routes are /api/recipes/:id/chat
 app.use("/api/import", importRouter);
-app.use("/api/chat", chatRouter);
 
 // Tags endpoint
 app.get("/api/tags", (_req, res) => {
