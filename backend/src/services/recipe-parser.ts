@@ -15,7 +15,11 @@ IMPORTANT RULES:
    - arugula → rocket
    - shrimp → prawns
    - ground beef → beef mince
-4. In step instructions, mark ingredient quantities with {{qty:N}} where N is the 0-based ingredient index
+4. In step instructions, embed quantities using {{qty:VALUE:UNIT}} markers where VALUE is the number and UNIT is the unit (g, ml, tsp, tbsp, or empty for countable items). These allow the app to scale quantities when serving size changes. Examples:
+   - "Add {{qty:500:g}} flour" (500 grams)
+   - "Pour in {{qty:200:ml}} milk" (200 millilitres)
+   - "Add {{qty:2:tsp}} salt" (2 teaspoons)
+   - "Beat {{qty:3:}} eggs" (3 eggs, no unit)
 5. Mark timer durations with {{timer:M}} where M is minutes (e.g., {{timer:15}} for 15 minutes)
 6. Suggest appropriate tags from: pasta, indian, mexican, asian, mediterranean, british, american, main, side, dessert, snack, breakfast, quick, vegetarian, vegan, one-pot, make-ahead, soup, salad, baking
 
@@ -27,10 +31,12 @@ Return ONLY valid JSON in this exact format:
   "prepTimeMinutes": 15,
   "cookTimeMinutes": 30,
   "ingredients": [
-    {"name": "ingredient name", "quantity": 100, "unit": "g", "notes": "finely chopped"}
+    {"name": "flour", "quantity": 500, "unit": "g", "notes": "sifted"},
+    {"name": "eggs", "quantity": 3, "unit": null, "notes": null}
   ],
   "steps": [
-    {"instruction": "Add {{qty:0}} of the first ingredient and cook for {{timer:5}}."}
+    {"instruction": "Add {{qty:500:g}} flour to a bowl."},
+    {"instruction": "Beat {{qty:3:}} eggs and mix in. Cook for {{timer:5}}."}
   ],
   "suggestedTags": ["main", "quick", "vegetarian"]
 }
@@ -39,6 +45,8 @@ For ingredients:
 - quantity should be a number or null (for "to taste", "a pinch", etc.)
 - unit should be "g", "ml", "tsp", "tbsp", or null for countable items like "2 eggs"
 - notes are optional (for prep instructions like "diced", "room temperature")
+
+IMPORTANT: The {{qty:VALUE:UNIT}} values in steps should match the quantities in the ingredients list, so they scale together.
 
 Parse this recipe:
 `;

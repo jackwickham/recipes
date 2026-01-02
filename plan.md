@@ -86,7 +86,7 @@ Once raw text is obtained (from any method):
    - Prep time, cook time
    - Ingredients (name, quantity, unit)
    - Steps with inline markers:
-     - Quantities: `{{qty:1}}` references ingredient by index (0-based)
+     - Quantities: `{{qty:500:g}}` embeds scalable quantity with unit (e.g., `{{qty:3:}}` for 3 eggs)
      - Timers: `{{timer:15}}` for 15-minute timer (supports multiple per step)
    - Suggested tags from categories: cuisine (pasta, indian, mexican), meal type (main, side, dessert, snack), characteristics (quick, vegetarian, one-pot, make-ahead)
 
