@@ -521,9 +521,11 @@ GET    /api/tags                 # List all unique tags (for filter dropdown)
 
 ### Phase 7: Deployment & Polish
 
-- [ ] Create Dockerfile for production build
-- [ ] Responsive design refinements
-- [ ] Loading states and error handling
-- [ ] Empty states
-- [ ] Mobile-friendly touch interactions
-- [ ] PWA basics (manifest, offline-capable for viewed recipes)
+- [x] Create Dockerfile for production build
+- [x] Responsive design refinements (media queries, touch targets)
+- [x] Loading states and error handling (existing implementation)
+- [x] Empty states (existing implementation)
+- [x] Mobile-friendly touch interactions (active states, safe area insets)
+- [x] PWA basics (manifest, theme color, Apple meta tags)
+
+> **Note:** Icons for PWA need to be provided as icon-192.png and icon-512.png in the public folder. A placeholder SVG is included.

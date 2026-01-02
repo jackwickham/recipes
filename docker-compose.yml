@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  recipes:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./config.yml:/app/config.yml:ro
+      - ./secrets.yml:/app/secrets.yml:ro
+      - recipes-data:/data
+    environment:
+      - SECRETS_FILE=/app/secrets.yml
+    restart: unless-stopped
+
+volumes:
+  recipes-data:
