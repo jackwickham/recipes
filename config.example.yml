@@ -1,0 +1,9 @@
+port: 3000
+
+database:
+  path: ./data/recipes.db
+
+llm:
+  provider: google
+  textModel: gemini-3-flash-preview
+  imageModel: gemini-3-pro-image-preview

@@ -456,24 +456,26 @@ GET    /api/tags                 # List all unique tags (for filter dropdown)
 
 ### Phase 1: Foundation
 
-- [ ] Set up monorepo structure with npm workspaces
-- [ ] Configure TypeScript for backend, frontend, and shared packages
-- [ ] Set up Vite for frontend with Preact
-- [ ] Set up Express backend with basic routing
-- [ ] Create YAML config loading (config.yaml + secrets file)
-- [ ] Create SQLite database with schema
-- [ ] Implement basic database query functions
-- [ ] Create shared type definitions
+- [x] Set up monorepo structure with npm workspaces
+- [x] Configure TypeScript for backend, frontend, and shared packages
+- [x] Set up Vite for frontend with Preact
+- [x] Set up Express backend with basic routing
+- [x] Create YAML config loading (config.yml + secrets file via SECRETS_FILE env var)
+- [x] Create SQLite database with schema
+- [x] Implement basic database query functions
+- [x] Create shared type definitions
 
 ### Phase 2: Core Recipe CRUD
 
-- [ ] Implement recipe list API endpoint
-- [ ] Implement single recipe API endpoint
+- [x] Implement recipe list API endpoint
+- [x] Implement single recipe API endpoint
 - [ ] Build home page with recipe grid
 - [ ] Build recipe detail page (read-only)
 - [ ] Implement manual recipe creation form
 - [ ] Implement recipe editing
 - [ ] Implement recipe deletion
+
+> **Note:** API endpoints for create/update/delete are already implemented in Phase 1. Phase 2 frontend work can use them directly.
 
 ### Phase 3: LLM Integration
 
