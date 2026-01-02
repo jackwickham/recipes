@@ -504,11 +504,11 @@ GET    /api/tags                 # List all unique tags (for filter dropdown)
 
 ### Phase 5: Search & Filtering
 
-- [ ] Implement fuzzy search with Fuse.js (title, description, ingredients, tags)
-- [ ] Build filter UI (rating, tags, ingredients)
-- [ ] Implement random sorting
-- [ ] Add "Surprise me" random recipe picker (respects current filters)
-- [ ] Tag management (add/remove tags)
+- [x] Implement fuzzy search with Fuse.js (title, description, ingredients, tags)
+- [x] Build filter UI (rating, tags, ingredients)
+- [x] Implement random sorting
+- [x] Add "Surprise me" random recipe picker (respects current filters)
+- [x] Tag management (add/remove tags via RecipeForm)
 
 ### Phase 6: Additional Features
 
