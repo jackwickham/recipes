@@ -512,12 +512,12 @@ GET    /api/tags                 # List all unique tags (for filter dropdown)
 
 ### Phase 6: Additional Features
 
-- [ ] Implement cooking list (localStorage)
-- [ ] Build chat modal interface
-- [ ] Implement chat API with structured output (message + optional updatedRecipe)
-- [ ] Add "save as variant" functionality
-- [ ] Recipe variants display and navigation
-- [ ] Chat history persistence
+- [x] Implement cooking list (localStorage)
+- [x] Build chat modal interface
+- [x] Implement chat API with structured output (message + optional updatedRecipe)
+- [x] Add "save as variant" functionality
+- [x] Recipe variants display and navigation
+- [x] Chat history persistence
 
 ### Phase 7: Deployment & Polish
 

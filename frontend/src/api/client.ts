@@ -98,3 +98,29 @@ export async function importFromText(text: string): Promise<ImportResult> {
     body: JSON.stringify({ text }),
   });
 }
+
+// Chat
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+  createdAt: string;
+}
+
+export interface ChatResponse {
+  message: string;
+  updatedRecipe: ParsedRecipe | null;
+}
+
+export async function getChatHistory(recipeId: number): Promise<ChatMessage[]> {
+  return request<ChatMessage[]>(`/recipes/${recipeId}/chat`);
+}
+
+export async function sendChatMessage(
+  recipeId: number,
+  message: string
+): Promise<ChatResponse> {
+  return request<ChatResponse>(`/recipes/${recipeId}/chat`, {
+    method: "POST",
+    body: JSON.stringify({ message }),
+  });
+}

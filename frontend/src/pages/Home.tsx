@@ -4,6 +4,7 @@ import Fuse from "fuse.js";
 import type { RecipeWithDetails } from "@recipes/shared";
 import { getRecipes, getTags } from "../api/client";
 import { RecipeCard } from "../components/RecipeCard";
+import { useCookingList } from "../hooks/useCookingList";
 
 type RatingFilter = "all" | "good+" | "great";
 
@@ -21,6 +22,7 @@ export function Home() {
   const [allTags, setAllTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const cookingList = useCookingList();
 
   // Filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -150,7 +152,7 @@ export function Home() {
         <h1>Recipes</h1>
         <div class="header-actions">
           <a href="/list" class="btn">
-            Cooking List
+            Cooking List{cookingList.count > 0 && ` (${cookingList.count})`}
           </a>
           <a href="/add" class="btn btn-primary">
             Add Recipe
