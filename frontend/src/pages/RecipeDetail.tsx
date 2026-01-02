@@ -2,23 +2,26 @@ import { useEffect, useState } from "preact/hooks";
 import { route } from "preact-router";
 import type { RecipeWithDetails } from "@recipes/shared";
 import { getRecipe, updateRating, deleteRecipe } from "../api/client";
+import { ScalingControls } from "../components/ScalingControls";
+import { Timer } from "../components/Timer";
+import { useTimer } from "../hooks/useTimer";
+import { useWakeLock } from "../hooks/useWakeLock";
+import {
+  formatQuantity,
+  renderStepText,
+  extractTimers,
+} from "../utils/scaling";
 
 interface Props {
   id?: string;
 }
 
-function formatTime(minutes: number | null): string | null {
+function formatDuration(minutes: number | null): string | null {
   if (!minutes) return null;
   if (minutes < 60) return `${minutes} min`;
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
   return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-}
-
-function formatQuantity(qty: number | null, unit: string | null): string {
-  if (qty === null) return "";
-  const formatted = Number.isInteger(qty) ? qty.toString() : qty.toFixed(1);
-  return unit ? `${formatted} ${unit}` : formatted;
 }
 
 export function RecipeDetail({ id }: Props) {
@@ -29,6 +32,10 @@ export function RecipeDetail({ id }: Props) {
     new Set()
   );
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [currentServings, setCurrentServings] = useState<number>(1);
+
+  const { timers, startTimer, stopTimer, resetTimer, getTimer } = useTimer();
+  const wakeLock = useWakeLock();
 
   useEffect(() => {
     if (id) {
@@ -42,12 +49,16 @@ export function RecipeDetail({ id }: Props) {
       setError(null);
       const data = await getRecipe(recipeId);
       setRecipe(data);
+      setCurrentServings(data.servings || 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load recipe");
     } finally {
       setLoading(false);
     }
   }
+
+  const baseServings = recipe?.servings || 1;
+  const scale = currentServings / baseServings;
 
   async function handleRatingChange(rating: "meh" | "good" | "great" | null) {
     if (!recipe) return;
@@ -115,7 +126,10 @@ export function RecipeDetail({ id }: Props) {
           <a href={`/edit/${recipe.id}`} class="btn">
             Edit
           </a>
-          <button class="btn btn-danger" onClick={() => setShowDeleteConfirm(true)}>
+          <button
+            class="btn btn-danger"
+            onClick={() => setShowDeleteConfirm(true)}
+          >
             Delete
           </button>
         </div>
@@ -128,24 +142,35 @@ export function RecipeDetail({ id }: Props) {
 
         <div class="recipe-meta">
           {recipe.prepTimeMinutes && (
-            <span>Prep: {formatTime(recipe.prepTimeMinutes)}</span>
+            <span>Prep: {formatDuration(recipe.prepTimeMinutes)}</span>
           )}
           {recipe.cookTimeMinutes && (
-            <span>Cook: {formatTime(recipe.cookTimeMinutes)}</span>
+            <span>Cook: {formatDuration(recipe.cookTimeMinutes)}</span>
           )}
           {recipe.servings && <span>Serves {recipe.servings}</span>}
         </div>
 
-        <div class="rating-buttons">
-          {(["meh", "good", "great"] as const).map((r) => (
+        <div class="recipe-controls">
+          <div class="rating-buttons">
+            {(["meh", "good", "great"] as const).map((r) => (
+              <button
+                key={r}
+                class={`rating-btn ${recipe.rating === r ? "active" : ""}`}
+                onClick={() => handleRatingChange(r)}
+              >
+                {r.charAt(0).toUpperCase() + r.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          {wakeLock.isSupported && (
             <button
-              key={r}
-              class={`rating-btn ${recipe.rating === r ? "active" : ""}`}
-              onClick={() => handleRatingChange(r)}
+              class={`btn wake-lock-btn ${wakeLock.isActive ? "active" : ""}`}
+              onClick={wakeLock.toggle}
             >
-              {r.charAt(0).toUpperCase() + r.slice(1)}
+              {wakeLock.isActive ? "Screen On" : "Keep Awake"}
             </button>
-          ))}
+          )}
         </div>
 
         {recipe.tags.length > 0 && (
@@ -156,6 +181,14 @@ export function RecipeDetail({ id }: Props) {
               </span>
             ))}
           </div>
+        )}
+
+        {recipe.servings && (
+          <ScalingControls
+            baseServings={baseServings}
+            currentServings={currentServings}
+            onServingsChange={setCurrentServings}
+          />
         )}
 
         {recipe.ingredients.length > 0 && (
@@ -171,7 +204,9 @@ export function RecipeDetail({ id }: Props) {
                     onChange={() => toggleIngredient(ing.id)}
                   />
                   <span class="ingredient-quantity">
-                    {formatQuantity(ing.quantity, ing.unit)}
+                    {ing.quantity !== null
+                      ? formatQuantity(ing.quantity, ing.unit, scale)
+                      : ""}
                   </span>
                   <span class="ingredient-name">{ing.name}</span>
                   {ing.notes && (
@@ -187,12 +222,34 @@ export function RecipeDetail({ id }: Props) {
           <section class="recipe-section">
             <h2>Method</h2>
             <ol class="step-list">
-              {recipe.steps.map((step, idx) => (
-                <li key={step.id} class="step-item">
-                  <span class="step-number">{idx + 1}</span>
-                  <div class="step-content">{step.instruction}</div>
-                </li>
-              ))}
+              {recipe.steps.map((step, idx) => {
+                const stepTimers = extractTimers(step.instruction);
+                const renderedText = renderStepText(step.instruction, scale);
+
+                return (
+                  <li key={step.id} class="step-item">
+                    <span class="step-number">{idx + 1}</span>
+                    <div class="step-content">
+                      <p>{renderedText}</p>
+                      {stepTimers.map((t, timerIdx) => {
+                        const timerId = `step-${step.id}-timer-${timerIdx}`;
+                        const timer = getTimer(timerId);
+
+                        return (
+                          <Timer
+                            key={timerId}
+                            timer={timer}
+                            minutes={t.minutes}
+                            onStart={() => startTimer(timerId, t.minutes)}
+                            onStop={() => stopTimer(timerId)}
+                            onReset={() => resetTimer(timerId)}
+                          />
+                        );
+                      })}
+                    </div>
+                  </li>
+                );
+              })}
             </ol>
           </section>
         )}
@@ -219,7 +276,10 @@ export function RecipeDetail({ id }: Props) {
       </main>
 
       {showDeleteConfirm && (
-        <div class="confirm-overlay" onClick={() => setShowDeleteConfirm(false)}>
+        <div
+          class="confirm-overlay"
+          onClick={() => setShowDeleteConfirm(false)}
+        >
           <div class="confirm-dialog" onClick={(e) => e.stopPropagation()}>
             <h3>Delete Recipe?</h3>
             <p>

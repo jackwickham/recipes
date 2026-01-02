@@ -491,14 +491,16 @@ GET    /api/tags                 # List all unique tags (for filter dropdown)
 
 ### Phase 4: Recipe Viewing Features
 
-- [ ] Implement quantity scaling logic
-- [ ] Build scaling controls UI (servings adjuster + ingredient-based scaling)
-- [ ] Implement inline quantity rendering with `{{qty:N}}` markers
-- [ ] Implement inline timer rendering with `{{timer:M}}` markers
-- [ ] Add timer functionality with audio alerts
-- [ ] Implement Screen Wake Lock API toggle
-- [ ] Implement rating system
-- [ ] Add ingredient checkboxes
+- [x] Implement quantity scaling logic
+- [x] Build scaling controls UI (servings adjuster)
+- [x] Implement inline quantity rendering with `{{qty:VALUE:UNIT}}` markers
+- [x] Implement inline timer rendering with `{{timer:M}}` markers
+- [x] Add timer functionality with audio alerts
+- [x] Implement Screen Wake Lock API toggle
+- [x] Implement rating system (done in Phase 2)
+- [x] Add ingredient checkboxes (done in Phase 2)
+
+> **Note:** Scaling UI implements servings-based scaling. Ingredient-based scaling ("Scale to 500g flour") deferred as lower priority. Quantity markers use `{{qty:VALUE:UNIT}}` format (e.g., `{{qty:500:g}}` for 500g).
 
 ### Phase 5: Search & Filtering
 
