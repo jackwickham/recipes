@@ -469,13 +469,13 @@ GET    /api/tags                 # List all unique tags (for filter dropdown)
 
 - [x] Implement recipe list API endpoint
 - [x] Implement single recipe API endpoint
-- [ ] Build home page with recipe grid
-- [ ] Build recipe detail page (read-only)
-- [ ] Implement manual recipe creation form
-- [ ] Implement recipe editing
-- [ ] Implement recipe deletion
+- [x] Build home page with recipe grid
+- [x] Build recipe detail page (read-only)
+- [x] Implement manual recipe creation form
+- [x] Implement recipe editing
+- [x] Implement recipe deletion
 
-> **Note:** API endpoints for create/update/delete are already implemented in Phase 1. Phase 2 frontend work can use them directly.
+> **Note:** API endpoints for create/update/delete were implemented in Phase 1. Import methods (photo/URL/text) are placeholders pending Phase 3 LLM integration.
 
 ### Phase 3: LLM Integration
 
