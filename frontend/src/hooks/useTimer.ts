@@ -16,9 +16,7 @@ export function useTimer() {
   // Create audio element for alerts
   useEffect(() => {
     // Create a simple beep using Web Audio API
-    audioRef.current = new Audio(
-      "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2LkZeWj4F0aGRqc4GQnKShmI2BesLCwr68uLKsq62xs7q/wMG7r56LdGNbXW17jJ2osLCom4uAbW1xeYqZpqylmYmBd3l9gpKfqqqjlYR4cXF2g5Sfp6ehlImAeXt/iJWeoqCYjoR+fH+GkZqfnpiQhoF+gISNlpudmZOLhIGBhIqSmJuZlI6Ig4OEiI6Ul5aUj4qGhIWHi5CUlpSSjoqHhoaIjJCTlJKPi4iGhoiKjpGSkpCNioiHh4mLj5GRkI6LiYiIiYuOkJCPjYuJiIiJi42Pj46Mi4mIiImLjY6OjYyKiYmJiouNjo6NjIqJiYmKi42NjYyLioqJiouMjY2MjIuKioqKi4yMjIyLioqKiouLjIyMi4uKioqLi4uMjIuLi4qKi4uLi4yMi4uLioqLi4uLjIyLi4uKi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4s="
-    );
+    audioRef.current = new Audio("/timer.mp3");
     return () => {
       // Clean up intervals on unmount
       intervalsRef.current.forEach((intervalId) => clearInterval(intervalId));
@@ -29,11 +27,19 @@ export function useTimer() {
     const totalSeconds = minutes * 60;
 
     setTimers((prev) => {
+      const existing = prev.get(id);
       const next = new Map(prev);
+
+      // If timer exists and isn't complete, keep its current remaining time
+      const remainingSeconds =
+        existing && !existing.isComplete
+          ? existing.remainingSeconds
+          : totalSeconds;
+
       next.set(id, {
         id,
         totalSeconds,
-        remainingSeconds: totalSeconds,
+        remainingSeconds,
         isRunning: true,
         isComplete: false,
       });
@@ -139,7 +145,9 @@ export function formatTime(seconds: number): string {
   const secs = seconds % 60;
 
   if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    return `${hours}:${minutes.toString().padStart(2, "0")}:${secs
+      .toString()
+      .padStart(2, "0")}`;
   }
   return `${minutes}:${secs.toString().padStart(2, "0")}`;
 }

@@ -793,11 +793,11 @@ body {
 }
 
 .timer-btn {
-  padding: 0.25rem 0.5rem;
+  padding: 0.375rem 0.75rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   background: var(--color-bg);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   cursor: pointer;
   z-index: 1;
 }
