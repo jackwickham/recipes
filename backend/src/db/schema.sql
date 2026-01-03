@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     recipe_id INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
     role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
     content TEXT NOT NULL,
+    metadata TEXT, -- JSON blob for suggested recipes, etc.
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

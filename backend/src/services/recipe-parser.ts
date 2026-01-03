@@ -205,9 +205,13 @@ function validateParsedRecipe(data: unknown): ParsedRecipe {
         }))
       : [],
     steps: Array.isArray(recipe.steps)
-      ? recipe.steps.map((step: Record<string, unknown>) => ({
-          instruction: String(step.instruction || ""),
-        }))
+      ? recipe.steps.map((step: unknown) => {
+          if (typeof step === "string") {
+            return { instruction: step };
+          }
+          const stepObj = step as Record<string, unknown>;
+          return { instruction: String(stepObj.instruction || "") };
+        })
       : [],
     suggestedTags: Array.isArray(recipe.suggestedTags)
       ? recipe.suggestedTags.filter(

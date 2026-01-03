@@ -56,14 +56,19 @@ chatRouter.post("/:id/chat", async (req, res) => {
     const response = await llm.complete(prompt);
 
     // Parse response
-    const { text, updatedRecipe } = parseChatResponse(response);
+    const { text, updatedRecipes } = parseChatResponse(response);
 
     // Save assistant message
-    addChatMessage(id, "assistant", text);
+    addChatMessage(
+      id,
+      "assistant",
+      text,
+      updatedRecipes.length > 0 ? JSON.stringify(updatedRecipes) : null
+    );
 
     res.json({
       message: text,
-      updatedRecipe,
+      updatedRecipes,
     });
   } catch (err) {
     console.error("Chat error:", err);
@@ -109,26 +114,28 @@ When answering questions:
 IMPORTANT: Your response must be valid JSON in this format:
 {
   "message": "Your conversational response to the user",
-  "updatedRecipe": null
+  "updatedRecipes": []
 }
 
-If you're providing a modified recipe, include it in updatedRecipe using this format:
+If you're providing modified or new recipes, include them in updatedRecipes as an array of objects in this format:
 {
   "message": "Your explanation of the changes",
-  "updatedRecipe": {
-    "title": "Modified Recipe Title",
-    "description": "Updated description",
-    "servings": 4,
-    "prepTimeMinutes": 15,
-    "cookTimeMinutes": 30,
-    "ingredients": [
-      {"name": "flour", "quantity": 500, "unit": "g", "notes": null}
-    ],
-    "steps": [
-      {"instruction": "Step with {{qty:500:g}} markers and {{timer:15}} if needed"}
-    ],
-    "suggestedTags": ["vegetarian", "quick"]
-  }
+  "updatedRecipes": [
+    {
+      "title": "Modified Recipe Title",
+      "description": "Updated description",
+      "servings": 4,
+      "prepTimeMinutes": 15,
+      "cookTimeMinutes": 30,
+      "ingredients": [
+        {"name": "flour", "quantity": 500, "unit": "g", "notes": null}
+      ],
+      "steps": [
+        {"instruction": "Step with {{qty:500:g}} markers and {{timer:15}} if needed"}
+      ],
+      "suggestedTags": ["vegetarian", "quick"]
+    }
+  ]
 }
 
 `;
@@ -154,7 +161,7 @@ If you're providing a modified recipe, include it in updatedRecipe using this fo
 
 function parseChatResponse(response: string): {
   text: string;
-  updatedRecipe: ParsedRecipe | null;
+  updatedRecipes: ParsedRecipe[];
 } {
   try {
     // Try to parse as JSON
@@ -174,15 +181,22 @@ function parseChatResponse(response: string): {
 
     const parsed = JSON.parse(jsonStr);
 
+    let recipes: ParsedRecipe[] = [];
+    if (Array.isArray(parsed.updatedRecipes)) {
+      recipes = parsed.updatedRecipes;
+    } else if (parsed.updatedRecipe) {
+      recipes = [parsed.updatedRecipe];
+    }
+
     return {
       text: parsed.message || response,
-      updatedRecipe: parsed.updatedRecipe || null,
+      updatedRecipes: recipes,
     };
   } catch {
     // If parsing fails, return the raw response
     return {
       text: response,
-      updatedRecipe: null,
+      updatedRecipes: [],
     };
   }
 }

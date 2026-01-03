@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "preact/hooks";
+import { useEffect, useState, useMemo, useRef } from "preact/hooks";
 import { route } from "preact-router";
 import Fuse from "fuse.js";
 import type { RecipeWithDetails } from "@recipes/shared";
@@ -33,6 +33,25 @@ export function Home({ path }: { path?: string }) {
   );
   const [ingredientFilter, setIngredientFilter] = useState("");
   const [showTagFilter, setShowTagFilter] = useState(false);
+  const tagFilterRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        tagFilterRef.current &&
+        !tagFilterRef.current.contains(event.target as Node)
+      ) {
+        setShowTagFilter(false);
+      }
+    }
+
+    if (showTagFilter) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showTagFilter]);
 
   useEffect(() => {
     loadRecipes();
@@ -232,7 +251,7 @@ export function Home({ path }: { path?: string }) {
               </button>
             </div>
 
-            <div class="filter-group tags-filter-container">
+            <div class="filter-group tags-filter-container" ref={tagFilterRef}>
               <button
                 class={`filter-chip tags-toggle ${showTagFilter ? "open" : ""}`}
                 onClick={() => setShowTagFilter(!showTagFilter)}
@@ -268,17 +287,6 @@ export function Home({ path }: { path?: string }) {
               )}
             </div>
 
-            <div class="filter-group ingredient-filter">
-              <span class="ingredient-filter-icon">🥕</span>
-              <input
-                type="text"
-                placeholder="Filter by ingredient..."
-                value={ingredientFilter}
-                onInput={(e) => setIngredientFilter(e.currentTarget.value)}
-                class="ingredient-filter-input"
-              />
-            </div>
-
             {/* Selected tags display inside the bar */}
             {selectedTags.size > 0 && (
               <div class="selected-tags-inline">
@@ -294,6 +302,17 @@ export function Home({ path }: { path?: string }) {
                 ))}
               </div>
             )}
+
+            <div class="filter-group ingredient-filter">
+              <span class="ingredient-filter-icon">🥕</span>
+              <input
+                type="text"
+                placeholder="Filter by ingredient..."
+                value={ingredientFilter}
+                onInput={(e) => setIngredientFilter(e.currentTarget.value)}
+                class="ingredient-filter-input"
+              />
+            </div>
           </div>
 
           <div class="filter-bar-right">

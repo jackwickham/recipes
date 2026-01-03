@@ -356,7 +356,14 @@ export function RecipeDetail({ id }: Props) {
             <div class="variants-carousel">
               {shuffledVariants.map((v) => (
                 <a key={v.id} href={`/recipe/${v.id}`} class="variant-card">
-                  <span class="variant-card-title">{v.title}</span>
+                  <div class="variant-card-content">
+                    <span class="variant-card-title">{v.title}</span>
+                    {v.description && (
+                      <span class="variant-card-description">
+                        {v.description}
+                      </span>
+                    )}
+                  </div>
                 </a>
               ))}
             </div>

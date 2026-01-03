@@ -5,6 +5,7 @@ import {
   sendChatMessage,
   type ChatMessage,
 } from "../api/client";
+import { renderStepText } from "../utils/scaling";
 
 interface Props {
   recipeId: number;
@@ -37,8 +38,8 @@ export function ChatModal({
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pendingRecipe, setPendingRecipe] = useState<ParsedRecipe | null>(null);
-  const [showPreview, setShowPreview] = useState(false);
+  const [pendingRecipes, setPendingRecipes] = useState<ParsedRecipe[]>([]);
+  const [showPreviewIdx, setShowPreviewIdx] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -66,7 +67,7 @@ export function ChatModal({
 
     setInput("");
     setError(null);
-    setPendingRecipe(null);
+    setPendingRecipes([]);
     setLoading(true);
 
     // Optimistically add user message
@@ -84,13 +85,17 @@ export function ChatModal({
         {
           role: "assistant",
           content: response.message,
+          metadata:
+            response.updatedRecipes.length > 0
+              ? JSON.stringify(response.updatedRecipes)
+              : null,
           createdAt: new Date().toISOString(),
         },
       ]);
 
-      // Store pending recipe if returned
-      if (response.updatedRecipe) {
-        setPendingRecipe(response.updatedRecipe);
+      // Store pending recipes if returned
+      if (response.updatedRecipes.length > 0) {
+        setPendingRecipes(response.updatedRecipes);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send message");
@@ -136,14 +141,41 @@ export function ChatModal({
             </div>
           )}
 
-          {messages.map((msg, idx) => (
-            <div
-              key={idx}
-              class={`chat-message chat-message-${msg.role}`}
-            >
-              <div class="chat-message-content">{msg.content}</div>
-            </div>
-          ))}
+          {messages.map((msg, idx) => {
+            let suggestedRecipes: ParsedRecipe[] = [];
+            if (msg.role === "assistant" && msg.metadata) {
+              try {
+                const parsed = JSON.parse(msg.metadata);
+                suggestedRecipes = Array.isArray(parsed) ? parsed : [parsed];
+              } catch {
+                // Ignore parse errors
+              }
+            }
+
+            return (
+              <div key={idx} class={`chat-message chat-message-${msg.role}`}>
+                <div class="chat-message-content">
+                  {msg.content}
+                  {suggestedRecipes.length > 0 && (
+                    <div class="chat-message-recipes">
+                      {suggestedRecipes.map((recipe, rIdx) => (
+                        <div key={rIdx} class="chat-message-recipe-badge">
+                          <span class="recipe-icon">🍳</span>
+                          <span class="recipe-title">{recipe.title}</span>
+                          <button
+                            class="btn btn-small"
+                            onClick={() => setPendingRecipes([recipe])}
+                          >
+                            View
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
 
           {loading && (
             <div class="chat-message chat-message-assistant">
@@ -156,116 +188,128 @@ export function ChatModal({
 
         {error && <div class="chat-error">{error}</div>}
 
-        {pendingRecipe && (
-          <div class="chat-recipe-pending">
-            <div class="chat-recipe-header">
-              <span class="chat-recipe-title">{pendingRecipe.title}</span>
-              <button
-                class={`btn btn-small ${showPreview ? "active" : ""}`}
-                onClick={() => setShowPreview(!showPreview)}
-              >
-                {showPreview ? "Hide Preview" : "Preview"}
-              </button>
-            </div>
-
-            {showPreview && (
-              <div class="chat-recipe-preview">
-                {pendingRecipe.description && (
-                  <p class="chat-recipe-description">{pendingRecipe.description}</p>
-                )}
-
-                <div class="chat-recipe-meta">
-                  {pendingRecipe.servings && (
-                    <span>Serves {pendingRecipe.servings}</span>
-                  )}
-                  {pendingRecipe.prepTimeMinutes && (
-                    <span>Prep: {pendingRecipe.prepTimeMinutes}m</span>
-                  )}
-                  {pendingRecipe.cookTimeMinutes && (
-                    <span>Cook: {pendingRecipe.cookTimeMinutes}m</span>
-                  )}
+        {pendingRecipes.length > 0 && (
+          <div class="chat-recipes-pending">
+            {pendingRecipes.map((recipe, idx) => (
+              <div key={idx} class="chat-recipe-pending">
+                <div class="chat-recipe-header">
+                  <span class="chat-recipe-title">{recipe.title}</span>
+                  <button
+                    class={`btn btn-small ${showPreviewIdx === idx ? "active" : ""}`}
+                    onClick={() =>
+                      setShowPreviewIdx(showPreviewIdx === idx ? null : idx)
+                    }
+                  >
+                    {showPreviewIdx === idx ? "Hide Preview" : "Preview"}
+                  </button>
                 </div>
 
-                {pendingRecipe.ingredients.length > 0 && (
-                  <div class="chat-recipe-section">
-                    <h4>Ingredients</h4>
-                    <ul>
-                      {pendingRecipe.ingredients.map((ing, i) => (
-                        <li key={i}>
-                          {ing.quantity && `${ing.quantity} `}
-                          {ing.unit && `${ing.unit} `}
-                          {ing.name}
-                          {ing.notes && ` (${ing.notes})`}
-                        </li>
-                      ))}
-                    </ul>
+                {showPreviewIdx === idx && (
+                  <div class="chat-recipe-preview">
+                    {recipe.description && (
+                      <p class="chat-recipe-description">{recipe.description}</p>
+                    )}
+
+                    <div class="chat-recipe-meta">
+                      {recipe.servings && <span>Serves {recipe.servings}</span>}
+                      {recipe.prepTimeMinutes && (
+                        <span>Prep: {recipe.prepTimeMinutes}m</span>
+                      )}
+                      {recipe.cookTimeMinutes && (
+                        <span>Cook: {recipe.cookTimeMinutes}m</span>
+                      )}
+                    </div>
+
+                    {recipe.ingredients.length > 0 && (
+                      <div class="chat-recipe-section">
+                        <h4>Ingredients</h4>
+                        <ul>
+                          {recipe.ingredients.map((ing, i) => (
+                            <li key={i}>
+                              {ing.quantity && `${ing.quantity} `}
+                              {ing.unit && `${ing.unit} `}
+                              {ing.name}
+                              {ing.notes && ` (${ing.notes})`}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {recipe.steps.length > 0 && (
+                      <div class="chat-recipe-section">
+                        <h4>Method</h4>
+                        <ol>
+                          {recipe.steps.map((step, i) => (
+                            <li key={i}>{renderStepText(step.instruction, 1)}</li>
+                          ))}
+                        </ol>
+                      </div>
+                    )}
+
+                    {recipe.suggestedTags.length > 0 && (
+                      <div class="chat-recipe-tags">
+                        {recipe.suggestedTags.map((tag) => (
+                          <span key={tag} class="tag-chip">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {pendingRecipe.steps.length > 0 && (
-                  <div class="chat-recipe-section">
-                    <h4>Method</h4>
-                    <ol>
-                      {pendingRecipe.steps.map((step, i) => (
-                        <li key={i}>{step.instruction}</li>
-                      ))}
-                    </ol>
-                  </div>
-                )}
-
-                {pendingRecipe.suggestedTags.length > 0 && (
-                  <div class="chat-recipe-tags">
-                    {pendingRecipe.suggestedTags.map((tag) => (
-                      <span key={tag} class="tag-chip">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                <div class="chat-recipe-actions">
+                  <button
+                    class="btn btn-small btn-primary"
+                    onClick={() => {
+                      onSaveAsNew(recipe);
+                      setPendingRecipes((prev) =>
+                        prev.filter((_, i) => i !== idx)
+                      );
+                      setShowPreviewIdx(null);
+                    }}
+                  >
+                    Save as New
+                  </button>
+                  <button
+                    class="btn btn-small"
+                    onClick={() => {
+                      onSaveAsVariant(recipe);
+                      setPendingRecipes((prev) =>
+                        prev.filter((_, i) => i !== idx)
+                      );
+                      setShowPreviewIdx(null);
+                    }}
+                  >
+                    Save as Variant
+                  </button>
+                  <button
+                    class="btn btn-small btn-danger"
+                    onClick={() => {
+                      onReplaceRecipe(recipe);
+                      setPendingRecipes((prev) =>
+                        prev.filter((_, i) => i !== idx)
+                      );
+                      setShowPreviewIdx(null);
+                    }}
+                  >
+                    Replace
+                  </button>
+                  <button
+                    class="btn btn-small"
+                    onClick={() => {
+                      setPendingRecipes((prev) =>
+                        prev.filter((_, i) => i !== idx)
+                      );
+                      setShowPreviewIdx(null);
+                    }}
+                  >
+                    Dismiss
+                  </button>
+                </div>
               </div>
-            )}
-
-            <div class="chat-recipe-actions">
-              <button
-                class="btn btn-small btn-primary"
-                onClick={() => {
-                  onSaveAsNew(pendingRecipe);
-                  setPendingRecipe(null);
-                  setShowPreview(false);
-                }}
-              >
-                Save as New
-              </button>
-              <button
-                class="btn btn-small"
-                onClick={() => {
-                  onSaveAsVariant(pendingRecipe);
-                  setPendingRecipe(null);
-                  setShowPreview(false);
-                }}
-              >
-                Save as Variant
-              </button>
-              <button
-                class="btn btn-small btn-danger"
-                onClick={() => {
-                  onReplaceRecipe(pendingRecipe);
-                  setPendingRecipe(null);
-                  setShowPreview(false);
-                }}
-              >
-                Replace
-              </button>
-              <button
-                class="btn btn-small"
-                onClick={() => {
-                  setPendingRecipe(null);
-                  setShowPreview(false);
-                }}
-              >
-                Dismiss
-              </button>
-            </div>
+            ))}
           </div>
         )}
 

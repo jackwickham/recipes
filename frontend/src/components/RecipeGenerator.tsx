@@ -2,6 +2,7 @@ import { useState } from "preact/hooks";
 import { route } from "preact-router";
 import type { ParsedRecipe } from "@recipes/shared";
 import { generateRecipe, createRecipe } from "../api/client";
+import { renderStepText } from "../utils/scaling";
 
 interface Props {
   onRecipeCreated: () => void;
@@ -190,7 +191,7 @@ export function RecipeGenerator({ onRecipeCreated }: Props) {
                       <h4>Method</h4>
                       <ol>
                         {generatedRecipe.steps.map((step, i) => (
-                          <li key={i}>{step.instruction}</li>
+                          <li key={i}>{renderStepText(step.instruction, 1)}</li>
                         ))}
                       </ol>
                     </div>

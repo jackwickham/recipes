@@ -110,12 +110,13 @@ export async function generateRecipe(prompt: string): Promise<ImportResult> {
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  metadata?: string | null;
   createdAt: string;
 }
 
 export interface ChatResponse {
   message: string;
-  updatedRecipe: ParsedRecipe | null;
+  updatedRecipes: ParsedRecipe[];
 }
 
 export async function getChatHistory(recipeId: number): Promise<ChatMessage[]> {

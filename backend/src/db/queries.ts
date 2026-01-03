@@ -350,12 +350,17 @@ export function getAllTags(): string[] {
 
 export function getChatHistory(
   recipeId: number
-): { role: "user" | "assistant"; content: string; createdAt: string }[] {
+): {
+  role: "user" | "assistant";
+  content: string;
+  metadata?: string | null;
+  createdAt: string;
+}[] {
   const db = getDb();
   return db
     .prepare(
       `
-    SELECT role, content, created_at as createdAt
+    SELECT role, content, metadata, created_at as createdAt
     FROM chat_messages
     WHERE recipe_id = ?
     ORDER BY created_at
@@ -364,6 +369,7 @@ export function getChatHistory(
     .all(recipeId) as {
     role: "user" | "assistant";
     content: string;
+    metadata?: string | null;
     createdAt: string;
   }[];
 }
@@ -371,13 +377,14 @@ export function getChatHistory(
 export function addChatMessage(
   recipeId: number,
   role: "user" | "assistant",
-  content: string
+  content: string,
+  metadata?: string | null
 ): void {
   const db = getDb();
   db.prepare(
     `
-    INSERT INTO chat_messages (recipe_id, role, content)
-    VALUES (?, ?, ?)
+    INSERT INTO chat_messages (recipe_id, role, content, metadata)
+    VALUES (?, ?, ?, ?)
   `
-  ).run(recipeId, role, content);
+  ).run(recipeId, role, content, metadata ?? null);
 }
