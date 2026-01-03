@@ -34,7 +34,7 @@ app.get("/api/tags", (_req, res) => {
 // Serve frontend in production
 const frontendPath = path.join(__dirname, "../../frontend/dist");
 app.use(express.static(frontendPath));
-app.get("*", (_req, res) => {
+app.get("(.*)", (_req, res) => {
   res.sendFile(path.join(frontendPath, "index.html"));
 });
 
