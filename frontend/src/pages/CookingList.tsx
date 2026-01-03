@@ -23,9 +23,11 @@ export function CookingList() {
           <div class="empty-state">
             <p>Your cooking list is empty.</p>
             <p>Add recipes from the recipe detail page to plan your cooking!</p>
-            <a href="/" class="btn btn-primary">
-              Browse Recipes
-            </a>
+            <div class="empty-state-actions">
+              <a href="/" class="btn btn-primary">
+                Browse Recipes
+              </a>
+            </div>
           </div>
         ) : (
           <ul class="cooking-list">

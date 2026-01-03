@@ -6,7 +6,7 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ) {
-  console.error("Error:", err.message);
+  console.error("Error:", err);
 
   if (err.name === "ValidationError") {
     return res.status(400).json({ error: err.message });

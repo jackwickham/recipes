@@ -8,7 +8,7 @@ import type {
 } from "@recipes/shared";
 
 interface Props {
-  recipe?: RecipeWithDetails;
+  recipe?: RecipeWithDetails | Partial<CreateRecipeInput>;
   onSubmit: (data: CreateRecipeInput) => Promise<void>;
   onCancel: () => void;
   submitLabel?: string;

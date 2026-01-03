@@ -168,7 +168,7 @@ export function AddRecipe() {
             Recipe extracted successfully. Review and edit before saving.
           </p>
           <RecipeForm
-            recipe={initialData as any}
+            recipe={initialData as CreateRecipeInput}
             onSubmit={handleSubmit}
             onCancel={handleBack}
             submitLabel="Save Recipe"

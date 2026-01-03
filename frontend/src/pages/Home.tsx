@@ -174,7 +174,11 @@ export function Home() {
             class="btn"
             onClick={handleSurpriseMe}
             disabled={filteredRecipes.length === 0}
-            title="Pick a random recipe"
+            title={
+              filteredRecipes.length === 0
+                ? "No recipes available"
+                : "Pick a random recipe"
+            }
           >
             Surprise me!
           </button>
