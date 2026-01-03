@@ -1,4 +1,4 @@
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useState, useMemo } from "preact/hooks";
 import { route } from "preact-router";
 import type { RecipeWithDetails, ParsedRecipe } from "@recipes/shared";
 import {
@@ -30,6 +30,15 @@ function formatDuration(minutes: number | null): string | null {
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
   return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+}
+
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
 }
 
 export function RecipeDetail({ id }: Props) {
@@ -69,6 +78,12 @@ export function RecipeDetail({ id }: Props) {
 
   const baseServings = recipe?.servings || 1;
   const scale = currentServings / baseServings;
+
+  // Shuffle variants once when recipe loads
+  const shuffledVariants = useMemo(
+    () => (recipe?.variants ? shuffleArray(recipe.variants) : []),
+    [recipe?.variants]
+  );
 
   async function handleRatingChange(rating: "meh" | "good" | "great" | null) {
     if (!recipe) return;
@@ -221,6 +236,12 @@ export function RecipeDetail({ id }: Props) {
       </header>
 
       <main>
+        {recipe.parentRecipe && (
+          <a href={`/recipe/${recipe.parentRecipe.id}`} class="parent-recipe-link">
+            ← Variant of: {recipe.parentRecipe.title}
+          </a>
+        )}
+
         {recipe.description && (
           <p class="recipe-description">{recipe.description}</p>
         )}
@@ -237,15 +258,30 @@ export function RecipeDetail({ id }: Props) {
 
         <div class="recipe-controls">
           <div class="rating-buttons">
-            {(["meh", "good", "great"] as const).map((r) => (
-              <button
-                key={r}
-                class={`rating-btn ${recipe.rating === r ? "active" : ""}`}
-                onClick={() => handleRatingChange(r)}
-              >
-                {r.charAt(0).toUpperCase() + r.slice(1)}
-              </button>
-            ))}
+            <button
+              class={`rating-btn rating-meh ${recipe.rating === "meh" ? "active" : ""}`}
+              onClick={() => handleRatingChange("meh")}
+              title="Meh"
+            >
+              👎
+            </button>
+            <button
+              class={`rating-btn rating-good ${recipe.rating === "good" ? "active" : ""}`}
+              onClick={() => handleRatingChange("good")}
+              title="Good"
+            >
+              👍
+            </button>
+            <button
+              class={`rating-btn rating-great ${recipe.rating === "great" ? "active" : ""}`}
+              onClick={() => handleRatingChange("great")}
+              title="Great"
+            >
+              <span class="thumbs-double">
+                <span class="thumb-back">👍</span>
+                <span class="thumb-front">👍</span>
+              </span>
+            </button>
           </div>
 
           {wakeLock.isSupported && (
@@ -285,6 +321,19 @@ export function RecipeDetail({ id }: Props) {
                 {t.tag}
               </span>
             ))}
+          </div>
+        )}
+
+        {shuffledVariants.length > 0 && (
+          <div class="variants-section">
+            <h3 class="variants-title">Variants</h3>
+            <div class="variants-carousel">
+              {shuffledVariants.map((v) => (
+                <a key={v.id} href={`/recipe/${v.id}`} class="variant-card">
+                  <span class="variant-card-title">{v.title}</span>
+                </a>
+              ))}
+            </div>
           </div>
         )}
 
@@ -366,18 +415,6 @@ export function RecipeDetail({ id }: Props) {
           </section>
         )}
 
-        {recipe.variants && recipe.variants.length > 0 && (
-          <section class="recipe-section">
-            <h2>Variants</h2>
-            <ul>
-              {recipe.variants.map((v) => (
-                <li key={v.id}>
-                  <a href={`/recipe/${v.id}`}>{v.title}</a>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
       </main>
 
       {showDeleteConfirm && (

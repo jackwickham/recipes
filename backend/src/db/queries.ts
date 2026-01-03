@@ -5,6 +5,7 @@ import type {
   Step,
   Tag,
   RecipeWithDetails,
+  RecipeRef,
   CreateRecipeInput,
 } from "@recipes/shared";
 
@@ -83,12 +84,22 @@ export function getRecipeById(id: number): RecipeWithDetails | null {
     )
     .all(id) as Recipe[];
 
+  // Get parent recipe info if this is a variant
+  let parentRecipe: RecipeRef | undefined;
+  if (recipe.parentRecipeId) {
+    const parent = db
+      .prepare("SELECT id, title FROM recipes WHERE id = ?")
+      .get(recipe.parentRecipeId) as RecipeRef | undefined;
+    parentRecipe = parent;
+  }
+
   return {
     ...recipe,
     ingredients: getIngredientsByRecipeId(id),
     steps: getStepsByRecipeId(id),
     tags: getTagsByRecipeId(id),
     variants,
+    parentRecipe,
   };
 }
 

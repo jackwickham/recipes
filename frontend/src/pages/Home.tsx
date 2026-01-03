@@ -4,6 +4,7 @@ import Fuse from "fuse.js";
 import type { RecipeWithDetails } from "@recipes/shared";
 import { getRecipes, getTags } from "../api/client";
 import { RecipeCard } from "../components/RecipeCard";
+import { RecipeGenerator } from "../components/RecipeGenerator";
 import { useCookingList } from "../hooks/useCookingList";
 
 type RatingFilter = "all" | "good+" | "great";
@@ -27,7 +28,9 @@ export function Home() {
   // Filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [ratingFilter, setRatingFilter] = useState<RatingFilter>("all");
-  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(
+    new Set(["main"])
+  );
   const [ingredientFilter, setIngredientFilter] = useState("");
   const [showTagFilter, setShowTagFilter] = useState(false);
 
@@ -78,12 +81,16 @@ export function Home() {
 
   // Apply filters
   const filteredRecipes = useMemo(() => {
-    let results = recipes;
+    // Exclude variants (recipes with a parent) from the main view
+    let results = recipes.filter((r) => r.parentRecipeId === null);
 
     // Fuzzy search
     if (searchQuery.trim()) {
       const searchResults = fuse.search(searchQuery.trim());
-      results = searchResults.map((r) => r.item);
+      // Filter search results to exclude variants
+      results = searchResults
+        .map((r) => r.item)
+        .filter((r) => r.parentRecipeId === null);
     }
 
     // Rating filter
@@ -96,11 +103,12 @@ export function Home() {
       });
     }
 
-    // Tag filter
+    // Tag filter (AND logic - recipe must have ALL selected tags)
     if (selectedTags.size > 0) {
-      results = results.filter((r) =>
-        r.tags.some((t) => selectedTags.has(t.tag))
-      );
+      results = results.filter((r) => {
+        const recipeTags = new Set(r.tags.map((t) => t.tag));
+        return Array.from(selectedTags).every((tag) => recipeTags.has(tag));
+      });
     }
 
     // Ingredient filter
@@ -112,7 +120,14 @@ export function Home() {
     }
 
     return results;
-  }, [recipes, searchQuery, ratingFilter, selectedTags, ingredientFilter, fuse]);
+  }, [
+    recipes,
+    searchQuery,
+    ratingFilter,
+    selectedTags,
+    ingredientFilter,
+    fuse,
+  ]);
 
   function handleSurpriseMe() {
     if (filteredRecipes.length === 0) return;
@@ -161,6 +176,9 @@ export function Home() {
       </header>
 
       <main>
+        {/* Recipe Generator */}
+        <RecipeGenerator onRecipeCreated={loadRecipes} />
+
         {/* Search bar */}
         <div class="search-bar">
           <input
@@ -184,61 +202,90 @@ export function Home() {
           </button>
         </div>
 
-        {/* Filter chips */}
+        {/* Filter bar */}
         <div class="filter-bar">
-          <div class="filter-group">
-            <span class="filter-label">Rating:</span>
-            <button
-              class={`filter-chip ${ratingFilter === "all" ? "active" : ""}`}
-              onClick={() => setRatingFilter("all")}
-            >
-              All
-            </button>
-            <button
-              class={`filter-chip ${ratingFilter === "good+" ? "active" : ""}`}
-              onClick={() => setRatingFilter("good+")}
-            >
-              Good+
-            </button>
-            <button
-              class={`filter-chip ${ratingFilter === "great" ? "active" : ""}`}
-              onClick={() => setRatingFilter("great")}
-            >
-              Great
-            </button>
+          <div class="filter-bar-left">
+            <div class="filter-group rating-filter">
+              <button
+                class={`rating-chip ${ratingFilter === "all" ? "active" : ""}`}
+                onClick={() => setRatingFilter("all")}
+              >
+                All
+              </button>
+              <button
+                class={`rating-chip rating-good ${
+                  ratingFilter === "good+" ? "active" : ""
+                }`}
+                onClick={() => setRatingFilter("good+")}
+                title="Good or better"
+              >
+                👍+
+              </button>
+              <button
+                class={`rating-chip rating-great ${
+                  ratingFilter === "great" ? "active" : ""
+                }`}
+                onClick={() => setRatingFilter("great")}
+                title="Great only"
+              >
+                👍👍
+              </button>
+            </div>
+
+            <div class="filter-group">
+              <button
+                class={`filter-chip tags-toggle ${showTagFilter ? "open" : ""}`}
+                onClick={() => setShowTagFilter(!showTagFilter)}
+              >
+                Tags {showTagFilter ? "▲" : "▼"}
+              </button>
+            </div>
+
+            <div class="filter-group ingredient-filter">
+              <span class="ingredient-filter-icon">🥕</span>
+              <input
+                type="text"
+                placeholder="Filter by ingredient..."
+                value={ingredientFilter}
+                onInput={(e) => setIngredientFilter(e.currentTarget.value)}
+                class="ingredient-filter-input"
+              />
+            </div>
           </div>
 
-          <div class="filter-group">
+          <div class="filter-bar-right">
+            {hasActiveFilters && (
+              <button class="btn btn-small" onClick={clearFilters}>
+                Clear
+              </button>
+            )}
             <button
-              class={`filter-chip ${selectedTags.size > 0 ? "active" : ""}`}
-              onClick={() => setShowTagFilter(!showTagFilter)}
+              class="btn btn-small reshuffle-btn"
+              onClick={reshuffle}
+              title="Reshuffle order"
             >
-              Tags {selectedTags.size > 0 && `(${selectedTags.size})`}
+              ↻
             </button>
           </div>
-
-          <div class="filter-group">
-            <input
-              type="text"
-              placeholder="Contains ingredient..."
-              value={ingredientFilter}
-              onInput={(e) => setIngredientFilter(e.currentTarget.value)}
-              class="ingredient-filter-input"
-            />
-          </div>
-
-          {hasActiveFilters && (
-            <button class="btn btn-small" onClick={clearFilters}>
-              Clear filters
-            </button>
-          )}
-
-          <button class="btn btn-small" onClick={reshuffle} title="Reshuffle">
-            ↻
-          </button>
         </div>
 
-        {/* Tag filter modal */}
+        {/* Selected tags display */}
+        {selectedTags.size > 0 && (
+          <div class="selected-tags-bar">
+            {Array.from(selectedTags).map((tag) => (
+              <button
+                key={tag}
+                class="selected-tag"
+                onClick={() => toggleTag(tag)}
+                title="Click to remove"
+              >
+                {tag} ×
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Tag filter dropdown */}
         {showTagFilter && allTags.length > 0 && (
           <div class="tag-filter-dropdown">
             {allTags.map((tag) => (
@@ -266,14 +313,17 @@ export function Home() {
           </div>
         )}
 
-        {!loading && !error && recipes.length > 0 && filteredRecipes.length === 0 && (
-          <div class="empty-state">
-            <p>No recipes match your filters.</p>
-            <button class="btn" onClick={clearFilters}>
-              Clear filters
-            </button>
-          </div>
-        )}
+        {!loading &&
+          !error &&
+          recipes.length > 0 &&
+          filteredRecipes.length === 0 && (
+            <div class="empty-state">
+              <p>No recipes match your filters.</p>
+              <button class="btn" onClick={clearFilters}>
+                Clear filters
+              </button>
+            </div>
+          )}
 
         {!loading && !error && filteredRecipes.length > 0 && (
           <div class="recipe-grid">

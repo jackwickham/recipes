@@ -38,6 +38,7 @@ export function ChatModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingRecipe, setPendingRecipe] = useState<ParsedRecipe | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -156,35 +157,115 @@ export function ChatModal({
         {error && <div class="chat-error">{error}</div>}
 
         {pendingRecipe && (
-          <div class="chat-recipe-actions">
-            <span>Recipe modifications ready:</span>
-            <button
-              class="btn btn-small btn-primary"
-              onClick={() => {
-                onSaveAsNew(pendingRecipe);
-                setPendingRecipe(null);
-              }}
-            >
-              Save as New
-            </button>
-            <button
-              class="btn btn-small"
-              onClick={() => {
-                onSaveAsVariant(pendingRecipe);
-                setPendingRecipe(null);
-              }}
-            >
-              Save as Variant
-            </button>
-            <button
-              class="btn btn-small btn-danger"
-              onClick={() => {
-                onReplaceRecipe(pendingRecipe);
-                setPendingRecipe(null);
-              }}
-            >
-              Replace Recipe
-            </button>
+          <div class="chat-recipe-pending">
+            <div class="chat-recipe-header">
+              <span class="chat-recipe-title">{pendingRecipe.title}</span>
+              <button
+                class={`btn btn-small ${showPreview ? "active" : ""}`}
+                onClick={() => setShowPreview(!showPreview)}
+              >
+                {showPreview ? "Hide Preview" : "Preview"}
+              </button>
+            </div>
+
+            {showPreview && (
+              <div class="chat-recipe-preview">
+                {pendingRecipe.description && (
+                  <p class="chat-recipe-description">{pendingRecipe.description}</p>
+                )}
+
+                <div class="chat-recipe-meta">
+                  {pendingRecipe.servings && (
+                    <span>Serves {pendingRecipe.servings}</span>
+                  )}
+                  {pendingRecipe.prepTimeMinutes && (
+                    <span>Prep: {pendingRecipe.prepTimeMinutes}m</span>
+                  )}
+                  {pendingRecipe.cookTimeMinutes && (
+                    <span>Cook: {pendingRecipe.cookTimeMinutes}m</span>
+                  )}
+                </div>
+
+                {pendingRecipe.ingredients.length > 0 && (
+                  <div class="chat-recipe-section">
+                    <h4>Ingredients</h4>
+                    <ul>
+                      {pendingRecipe.ingredients.map((ing, i) => (
+                        <li key={i}>
+                          {ing.quantity && `${ing.quantity} `}
+                          {ing.unit && `${ing.unit} `}
+                          {ing.name}
+                          {ing.notes && ` (${ing.notes})`}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {pendingRecipe.steps.length > 0 && (
+                  <div class="chat-recipe-section">
+                    <h4>Method</h4>
+                    <ol>
+                      {pendingRecipe.steps.map((step, i) => (
+                        <li key={i}>{step.instruction}</li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+
+                {pendingRecipe.suggestedTags.length > 0 && (
+                  <div class="chat-recipe-tags">
+                    {pendingRecipe.suggestedTags.map((tag) => (
+                      <span key={tag} class="tag-chip">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div class="chat-recipe-actions">
+              <button
+                class="btn btn-small btn-primary"
+                onClick={() => {
+                  onSaveAsNew(pendingRecipe);
+                  setPendingRecipe(null);
+                  setShowPreview(false);
+                }}
+              >
+                Save as New
+              </button>
+              <button
+                class="btn btn-small"
+                onClick={() => {
+                  onSaveAsVariant(pendingRecipe);
+                  setPendingRecipe(null);
+                  setShowPreview(false);
+                }}
+              >
+                Save as Variant
+              </button>
+              <button
+                class="btn btn-small btn-danger"
+                onClick={() => {
+                  onReplaceRecipe(pendingRecipe);
+                  setPendingRecipe(null);
+                  setShowPreview(false);
+                }}
+              >
+                Replace
+              </button>
+              <button
+                class="btn btn-small"
+                onClick={() => {
+                  setPendingRecipe(null);
+                  setShowPreview(false);
+                }}
+              >
+                Dismiss
+              </button>
+            </div>
           </div>
         )}
 

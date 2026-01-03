@@ -55,6 +55,39 @@ IMPORTANT: The {{qty:VALUE:UNIT}} values in steps should match the quantities in
 Parse this recipe:
 `;
 
+const RECIPE_GENERATE_PROMPT = `You are a creative recipe assistant. Generate a complete recipe based on the user's description.
+
+IMPORTANT RULES:
+1. Use metric units (grams, millilitres, celsius)
+2. Use fan oven temperatures
+3. Use British English ingredient names (aubergine not eggplant, coriander not cilantro, etc.)
+4. In step instructions, embed quantities using {{qty:VALUE:UNIT}} markers
+5. Mark timer durations with {{timer:M}} where M is minutes
+6. Create practical, delicious recipes that a home cook can make
+7. Be creative but realistic with ingredients and techniques
+8. Suggest appropriate tags
+
+Return ONLY valid JSON in this exact format:
+{
+  "title": "Recipe Title",
+  "description": "Brief description of the dish",
+  "servings": 4,
+  "prepTimeMinutes": 15,
+  "cookTimeMinutes": 30,
+  "ingredients": [
+    {"name": "flour", "quantity": 500, "unit": "g", "notes": "sifted"},
+    {"name": "eggs", "quantity": 3, "unit": null, "notes": null}
+  ],
+  "steps": [
+    {"instruction": "Add {{qty:500:g}} flour to a bowl."},
+    {"instruction": "Beat {{qty:3:}} eggs and mix in. Cook for {{timer:5}}."}
+  ],
+  "suggestedTags": ["main", "quick", "vegetarian"]
+}
+
+User's recipe request:
+`;
+
 const IMAGE_EXTRACT_PROMPT = `Extract all text from this recipe image. Include:
 - Recipe title
 - Any description or introduction
@@ -63,6 +96,31 @@ const IMAGE_EXTRACT_PROMPT = `Extract all text from this recipe image. Include:
 - Any times, temperatures, or serving information
 
 Return the text as if you were transcribing the recipe from a cookbook. Include all details visible in the image.`;
+
+export async function generateRecipeFromPrompt(prompt: string): Promise<ParsedRecipe> {
+  const llm = getLLM();
+  const response = await llm.complete(RECIPE_GENERATE_PROMPT + prompt);
+
+  // Extract JSON from response (handle markdown code blocks)
+  let jsonStr = response;
+  const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (jsonMatch) {
+    jsonStr = jsonMatch[1].trim();
+  }
+
+  try {
+    const parsed = JSON.parse(jsonStr);
+    return validateParsedRecipe(parsed);
+  } catch {
+    // Try to find JSON object in response
+    const objectMatch = response.match(/\{[\s\S]*\}/);
+    if (objectMatch) {
+      const parsed = JSON.parse(objectMatch[0]);
+      return validateParsedRecipe(parsed);
+    }
+    throw new Error("Failed to generate recipe from LLM response");
+  }
+}
 
 export async function parseRecipeFromText(text: string): Promise<ParsedRecipe> {
   const llm = getLLM();

@@ -99,6 +99,13 @@ export async function importFromText(text: string): Promise<ImportResult> {
   });
 }
 
+export async function generateRecipe(prompt: string): Promise<ImportResult> {
+  return request<ImportResult>("/import/generate", {
+    method: "POST",
+    body: JSON.stringify({ prompt }),
+  });
+}
+
 // Chat
 export interface ChatMessage {
   role: "user" | "assistant";

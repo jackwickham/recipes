@@ -15,11 +15,11 @@ function formatTime(minutes: number | null): string | null {
 function getRatingColor(rating: string | null): string {
   switch (rating) {
     case "great":
-      return "var(--color-success)";
+      return "var(--color-rating-great)";
     case "good":
-      return "var(--color-warning)";
+      return "var(--color-rating-good)";
     case "meh":
-      return "var(--color-text-secondary)";
+      return "var(--color-rating-meh)";
     default:
       return "transparent";
   }

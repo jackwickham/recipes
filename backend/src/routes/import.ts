@@ -3,6 +3,7 @@ import {
   parseRecipeFromText,
   parseRecipeFromImages,
   parseRecipeFromUrl,
+  generateRecipeFromPrompt,
 } from "../services/recipe-parser.js";
 
 export const importRouter = Router();
@@ -103,6 +104,28 @@ importRouter.post("/parse", async (req, res, next) => {
     const recipe = await parseRecipeFromText(sourceText);
 
     res.json({ recipe });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/import/generate - Generate a new recipe from a prompt
+importRouter.post("/generate", async (req, res, next) => {
+  try {
+    const { prompt } = req.body;
+
+    if (!prompt || typeof prompt !== "string") {
+      return res.status(400).json({ error: "Prompt is required" });
+    }
+
+    const recipe = await generateRecipeFromPrompt(prompt);
+
+    res.json({
+      sourceType: "text",
+      sourceText: null,
+      sourceContext: `Generated from prompt: ${prompt}`,
+      recipe,
+    });
   } catch (err) {
     next(err);
   }

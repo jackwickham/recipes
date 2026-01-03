@@ -3,6 +3,7 @@ import { useState, useCallback, useEffect } from "preact/hooks";
 export function useWakeLock() {
   const [isSupported, setIsSupported] = useState(false);
   const [isActive, setIsActive] = useState(false);
+  const [wantsLock, setWantsLock] = useState(false);
   const [wakeLock, setWakeLock] = useState<WakeLockSentinel | null>(null);
 
   useEffect(() => {
@@ -16,8 +17,8 @@ export function useWakeLock() {
       const lock = await navigator.wakeLock.request("screen");
       setWakeLock(lock);
       setIsActive(true);
+      setWantsLock(true);
 
-      // Re-acquire wake lock if page becomes visible again
       lock.addEventListener("release", () => {
         setIsActive(false);
         setWakeLock(null);
@@ -31,6 +32,7 @@ export function useWakeLock() {
   }, [isSupported]);
 
   const release = useCallback(async () => {
+    setWantsLock(false);
     if (wakeLock) {
       await wakeLock.release();
       setWakeLock(null);
@@ -39,17 +41,17 @@ export function useWakeLock() {
   }, [wakeLock]);
 
   const toggle = useCallback(async () => {
-    if (isActive) {
+    if (wantsLock) {
       await release();
     } else {
       await request();
     }
-  }, [isActive, request, release]);
+  }, [wantsLock, request, release]);
 
-  // Re-acquire wake lock when page becomes visible
+  // Re-acquire wake lock when page becomes visible if user wants it
   useEffect(() => {
     const handleVisibilityChange = async () => {
-      if (document.visibilityState === "visible" && isActive && !wakeLock) {
+      if (document.visibilityState === "visible" && wantsLock && !wakeLock) {
         await request();
       }
     };
@@ -58,7 +60,7 @@ export function useWakeLock() {
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [isActive, wakeLock, request]);
+  }, [wantsLock, wakeLock, request]);
 
   // Clean up on unmount
   useEffect(() => {
