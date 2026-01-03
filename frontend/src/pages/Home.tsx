@@ -232,13 +232,40 @@ export function Home({ path }: { path?: string }) {
               </button>
             </div>
 
-            <div class="filter-group">
+            <div class="filter-group tags-filter-container">
               <button
                 class={`filter-chip tags-toggle ${showTagFilter ? "open" : ""}`}
                 onClick={() => setShowTagFilter(!showTagFilter)}
               >
-                Tags {showTagFilter ? "▲" : "▼"}
+                Tags
+                <svg
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  class={`tags-toggle-icon ${showTagFilter ? "open" : ""}`}
+                >
+                  <path
+                    fill-rule="evenodd"
+                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
               </button>
+
+              {showTagFilter && allTags.length > 0 && (
+                <div class="tag-filter-popover">
+                  <div class="tag-filter-dropdown">
+                    {allTags.map((tag) => (
+                      <button
+                        key={tag}
+                        class={`tag-chip ${selectedTags.has(tag) ? "selected" : ""}`}
+                        onClick={() => toggleTag(tag)}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div class="filter-group ingredient-filter">
@@ -251,6 +278,22 @@ export function Home({ path }: { path?: string }) {
                 class="ingredient-filter-input"
               />
             </div>
+
+            {/* Selected tags display inside the bar */}
+            {selectedTags.size > 0 && (
+              <div class="selected-tags-inline">
+                {Array.from(selectedTags).map((tag) => (
+                  <button
+                    key={tag}
+                    class="selected-tag-mini"
+                    onClick={() => toggleTag(tag)}
+                    title="Remove tag"
+                  >
+                    {tag} ×
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div class="filter-bar-right">
@@ -268,37 +311,6 @@ export function Home({ path }: { path?: string }) {
             </button>
           </div>
         </div>
-
-        {/* Selected tags display */}
-        {selectedTags.size > 0 && (
-          <div class="selected-tags-bar">
-            {Array.from(selectedTags).map((tag) => (
-              <button
-                key={tag}
-                class="selected-tag"
-                onClick={() => toggleTag(tag)}
-                title="Click to remove"
-              >
-                {tag} ×
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Tag filter dropdown */}
-        {showTagFilter && allTags.length > 0 && (
-          <div class="tag-filter-dropdown">
-            {allTags.map((tag) => (
-              <button
-                key={tag}
-                class={`tag-chip ${selectedTags.has(tag) ? "selected" : ""}`}
-                onClick={() => toggleTag(tag)}
-              >
-                {tag}
-              </button>
-            ))}
-          </div>
-        )}
 
         {loading && <p class="loading">Loading recipes...</p>}
 

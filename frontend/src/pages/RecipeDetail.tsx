@@ -3,6 +3,7 @@ import { route } from "preact-router";
 import type { RecipeWithDetails, ParsedRecipe } from "@recipes/shared";
 import {
   getRecipe,
+  getRecipes,
   updateRating,
   deleteRecipe,
   createRecipe,
@@ -194,6 +195,21 @@ export function RecipeDetail({ id }: Props) {
     }
   }
 
+  async function handleSurpriseMe() {
+    try {
+      const allRecipes = await getRecipes();
+      const candidates = allRecipes.filter(
+        (r) => r.parentRecipeId === null && r.id !== recipe?.id
+      );
+      if (candidates.length > 0) {
+        const random = candidates[Math.floor(Math.random() * candidates.length)];
+        route(`/recipe/${random.id}`);
+      }
+    } catch (err) {
+      console.error("Failed to surprise me:", err);
+    }
+  }
+
   if (loading) {
     return (
       <div class="page">
@@ -224,6 +240,13 @@ export function RecipeDetail({ id }: Props) {
         </a>
         <h1>{recipe.title}</h1>
         <div class="header-actions">
+          <button
+            class="btn"
+            onClick={handleSurpriseMe}
+            title="Show me another random recipe"
+          >
+            🎲
+          </button>
           <a href={`/edit/${recipe.id}`} class="btn">
             Edit
           </a>
