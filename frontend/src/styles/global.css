@@ -1293,7 +1293,7 @@ body {
   background: var(--color-bg);
   width: 100%;
   max-width: 600px;
-  max-height: 80vh;
+  max-height: 95vh;
   border-radius: var(--radius) var(--radius) 0 0;
   display: flex;
   flex-direction: column;
@@ -1317,7 +1317,6 @@ body {
   overflow-y: auto;
   padding: 1rem;
   min-height: 200px;
-  max-height: 50vh; /* Reduced from 400px to relative height */
 }
 
 .chat-empty {
@@ -1414,7 +1413,7 @@ body {
 .chat-recipes-pending {
   border-top: 1px solid var(--color-border);
   background: var(--color-bg-secondary);
-  max-height: 50vh;
+  max-height: 60vh; /* Keep some limit so it doesn't push input off completely if extremely long */
   overflow-y: auto;
 }
 
@@ -1441,8 +1440,6 @@ body {
 
 .chat-recipe-preview {
   padding: 1rem;
-  max-height: 40vh;
-  overflow-y: auto;
   border-top: 1px solid var(--color-border);
   background: var(--color-bg);
 }
