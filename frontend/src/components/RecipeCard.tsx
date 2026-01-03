@@ -12,16 +12,21 @@ function formatTime(minutes: number | null): string | null {
   return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
 }
 
-function getRatingColor(rating: string | null): string {
+function getRatingContent(rating: string | null) {
   switch (rating) {
     case "great":
-      return "var(--color-rating-great)";
+      return (
+        <span class="thumbs-double">
+          <span class="thumb-back">👍</span>
+          <span class="thumb-front">👍</span>
+        </span>
+      );
     case "good":
-      return "var(--color-rating-good)";
+      return "👍";
     case "meh":
-      return "var(--color-rating-meh)";
+      return "👎";
     default:
-      return "transparent";
+      return null;
   }
 }
 
@@ -35,10 +40,11 @@ export function RecipeCard({ recipe }: Props) {
         <h3 class="recipe-card-title">{recipe.title}</h3>
         {recipe.rating && (
           <span
-            class="recipe-card-rating"
-            style={{ backgroundColor: getRatingColor(recipe.rating) }}
+            class={`recipe-card-rating rating-${recipe.rating}`}
             title={recipe.rating}
-          />
+          >
+            {getRatingContent(recipe.rating)}
+          </span>
         )}
       </div>
 

@@ -138,12 +138,20 @@ body {
 }
 
 .recipe-card-rating {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+  font-size: 1rem;
+  line-height: 1;
   flex-shrink: 0;
-  margin-top: 0.3rem;
+  margin-top: 0.1rem;
 }
+
+.recipe-card-rating.rating-meh {
+  color: var(--color-rating-meh); /* Fallback or visual cue */
+  filter: grayscale(0.5); /* Make the red thumb a bit more muted if it's emoji */
+}
+/* Emojis usually have their own color, but we can style them if they are text or svg.
+   Since we are using standard emojis, color properties might not affect them fully depending on OS,
+   but let's leave it simple. The previous circle design used background-color.
+*/
 
 .recipe-card-meta {
   display: flex;
@@ -487,16 +495,16 @@ body {
 }
 
 /* Overlapping double thumbs styling */
-.rating-btn.rating-great .thumbs-double {
+.thumbs-double {
   display: inline-flex;
   position: relative;
 }
 
-.rating-btn.rating-great .thumbs-double .thumb-back {
+.thumbs-double .thumb-back {
   opacity: 0.6;
 }
 
-.rating-btn.rating-great .thumbs-double .thumb-front {
+.thumbs-double .thumb-front {
   margin-left: -0.5em;
 }
 
@@ -792,27 +800,31 @@ body {
   gap: 0.5rem;
   width: 100%;
   padding: 0.75rem 1rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius);
-  color: white;
+  color: var(--color-text);
   font-size: 0.95rem;
   font-weight: 500;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: all 0.15s;
 }
 
 .recipe-generator-toggle:hover {
-  opacity: 0.9;
+  border-color: var(--color-primary);
+  background: var(--color-bg-secondary);
 }
 
 .recipe-generator-toggle.open {
   border-radius: var(--radius) var(--radius) 0 0;
+  background: var(--color-bg-secondary);
+  border-bottom-color: transparent;
 }
 
 .recipe-generator-icon {
   font-size: 1.25rem;
   font-weight: 600;
+  color: var(--color-primary);
 }
 
 .recipe-generator-arrow {
