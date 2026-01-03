@@ -125,7 +125,6 @@ export function RecipeGenerator({ onRecipeCreated }: Props) {
                   class="recipe-generator-suggestion"
                   onClick={() => {
                     setPrompt(suggestion);
-                    handleGenerate(suggestion);
                   }}
                 >
                   {suggestion}

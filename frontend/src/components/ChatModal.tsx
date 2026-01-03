@@ -161,7 +161,7 @@ export function ChatModal({
                   <button
                     key={prompt}
                     class="chat-suggestion"
-                    onClick={() => handleSend(prompt)}
+                    onClick={() => setInput(prompt)}
                   >
                     {prompt}
                   </button>
