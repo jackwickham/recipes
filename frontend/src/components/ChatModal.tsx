@@ -115,7 +115,12 @@ export function ChatModal({
 
   return (
     <div class="chat-overlay" onClick={onClose}>
-      <div class="chat-modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        class={`chat-modal ${pendingRecipes.length > 0 ? "has-pending" : ""} ${
+          showPreviewIdx !== null ? "has-preview" : ""
+        }`}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div class="chat-header">
           <h2>Chat about {recipeTitle}</h2>
           <button class="btn btn-small" onClick={onClose}>
