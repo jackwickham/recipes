@@ -1,6 +1,6 @@
 import { useCookingList } from "../hooks/useCookingList";
 
-export function CookingList() {
+export function CookingList({ path }: { path?: string }) {
   const { items, removeRecipe, clearList } = useCookingList();
 
   return (

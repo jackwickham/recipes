@@ -6,6 +6,7 @@ import { RecipeForm } from "../components/RecipeForm";
 
 interface Props {
   id?: string;
+  path?: string;
 }
 
 export function EditRecipe({ id }: Props) {

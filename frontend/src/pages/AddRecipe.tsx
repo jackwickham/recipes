@@ -19,7 +19,7 @@ interface ImportState {
   recipe: ParsedRecipe;
 }
 
-export function AddRecipe() {
+export function AddRecipe({ path }: { path?: string }) {
   const [mode, setMode] = useState<Mode>("choose");
   const [importState, setImportState] = useState<ImportState | null>(null);
   const [loading, setLoading] = useState(false);

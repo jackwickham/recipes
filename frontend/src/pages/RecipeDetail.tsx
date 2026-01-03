@@ -22,6 +22,7 @@ import {
 
 interface Props {
   id?: string;
+  path?: string;
 }
 
 function formatDuration(minutes: number | null): string | null {

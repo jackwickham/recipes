@@ -18,7 +18,7 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
-export function Home() {
+export function Home({ path }: { path?: string }) {
   const [recipes, setRecipes] = useState<RecipeWithDetails[]>([]);
   const [allTags, setAllTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
