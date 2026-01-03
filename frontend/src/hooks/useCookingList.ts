@@ -6,6 +6,7 @@ export interface CookingListItem {
   id: number;
   title: string;
   addedAt: number;
+  servings?: number;
 }
 
 export function useCookingList() {
@@ -32,14 +33,20 @@ export function useCookingList() {
     }
   }, [items]);
 
-  function addRecipe(id: number, title: string) {
+  function addRecipe(id: number, title: string, servings?: number) {
     setItems((prev) => {
       // Don't add if already in list
       if (prev.some((item) => item.id === id)) {
         return prev;
       }
-      return [...prev, { id, title, addedAt: Date.now() }];
+      return [...prev, { id, title, servings, addedAt: Date.now() }];
     });
+  }
+
+  function updateServings(id: number, servings: number) {
+    setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, servings } : item))
+    );
   }
 
   function removeRecipe(id: number) {
@@ -58,6 +65,7 @@ export function useCookingList() {
     items,
     count: items.length,
     addRecipe,
+    updateServings,
     removeRecipe,
     isInList,
     clearList,

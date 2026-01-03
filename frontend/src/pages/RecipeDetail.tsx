@@ -304,7 +304,9 @@ export function RecipeDetail({ id }: Props) {
           ) : (
             <button
               class="btn btn-primary"
-              onClick={() => cookingList.addRecipe(recipe.id, recipe.title)}
+              onClick={() =>
+                cookingList.addRecipe(recipe.id, recipe.title, currentServings)
+              }
             >
               Add to List
             </button>

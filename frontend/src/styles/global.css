@@ -1162,31 +1162,62 @@ body {
 }
 
 /* Cooking list */
-.cooking-list {
-  list-style: none;
-}
-
-.cooking-list-item {
+.cooking-list-items {
   display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.cooking-list-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  background: var(--color-bg);
+  transition: box-shadow 0.15s;
+}
+
+.cooking-list-card:hover {
+  box-shadow: var(--shadow);
+}
+
+.cooking-list-card.loading {
+  padding: 2rem;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.cooking-list-card.error {
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+.cooking-list-card-header {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 1rem;
 }
 
-.cooking-list-item:last-child {
-  border-bottom: none;
+.cooking-list-card-header h3 {
+  font-size: 1.1rem;
+  margin: 0;
 }
 
-.cooking-list-link {
-  flex: 1;
+.cooking-list-card-header h3 a {
   color: var(--color-text);
   text-decoration: none;
-  font-weight: 500;
 }
 
-.cooking-list-link:hover {
+.cooking-list-card-header h3 a:hover {
   color: var(--color-primary);
+}
+
+.shopping-list h2 {
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
 }
 
 /* Chat modal */

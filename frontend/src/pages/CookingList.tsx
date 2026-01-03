@@ -1,7 +1,81 @@
+import { useEffect, useState, useMemo } from "preact/hooks";
+import type { RecipeWithDetails } from "@recipes/shared";
+import { getRecipe } from "../api/client";
 import { useCookingList } from "../hooks/useCookingList";
+import { ScalingControls } from "../components/ScalingControls";
+import { formatQuantity } from "../utils/scaling";
 
 export function CookingList({ path }: { path?: string }) {
-  const { items, removeRecipe, clearList } = useCookingList();
+  const { items, removeRecipe, updateServings, clearList } = useCookingList();
+  const [loadedRecipes, setLoadedRecipes] = useState<
+    Map<number, RecipeWithDetails>
+  >(new Map());
+  const [loading, setLoading] = useState(false);
+  const [viewMode, setViewMode] = useState<"recipes" | "shopping">("recipes");
+
+  useEffect(() => {
+    const missingIds = items
+      .filter((item) => !loadedRecipes.has(item.id))
+      .map((i) => i.id);
+
+    if (missingIds.length > 0) {
+      loadRecipes(missingIds);
+    }
+  }, [items]);
+
+  async function loadRecipes(ids: number[]) {
+    setLoading(true);
+    try {
+      const promises = ids.map((id) => getRecipe(id).catch(() => null));
+      const results = await Promise.all(promises);
+      setLoadedRecipes((prev) => {
+        const next = new Map(prev);
+        results.forEach((r) => {
+          if (r) next.set(r.id, r);
+        });
+        return next;
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const shoppingList = useMemo(() => {
+    const ingredients = new Map<
+      string,
+      { name: string; quantity: number; unit: string | null }
+    >();
+
+    items.forEach((item) => {
+      const recipe = loadedRecipes.get(item.id);
+      if (!recipe) return;
+
+      const baseServings = recipe.servings || 1;
+      const targetServings = item.servings || baseServings;
+      const scale = targetServings / baseServings;
+
+      recipe.ingredients.forEach((ing) => {
+        // normalization key: lower case name + unit
+        const key = `${ing.name.toLowerCase().trim()}|${ing.unit || ""}`;
+        const current = ingredients.get(key);
+        const addedQty = ing.quantity ? ing.quantity * scale : 0;
+
+        if (current) {
+          current.quantity += addedQty;
+        } else {
+          ingredients.set(key, {
+            name: ing.name.trim(), // Keep original casing of first occurrence
+            quantity: addedQty,
+            unit: ing.unit || null,
+          });
+        }
+      });
+    });
+
+    return Array.from(ingredients.values()).sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
+  }, [items, loadedRecipes]);
 
   return (
     <div class="page">
@@ -12,12 +86,25 @@ export function CookingList({ path }: { path?: string }) {
         <h1>Cooking List</h1>
         {items.length > 0 && (
           <div class="header-actions">
+            <button
+              class={`btn ${viewMode === "recipes" ? "btn-primary" : ""}`}
+              onClick={() => setViewMode("recipes")}
+            >
+              Recipes
+            </button>
+            <button
+              class={`btn ${viewMode === "shopping" ? "btn-primary" : ""}`}
+              onClick={() => setViewMode("shopping")}
+            >
+              Shopping List
+            </button>
             <button class="btn btn-danger" onClick={clearList}>
               Clear All
             </button>
           </div>
         )}
       </header>
+
       <main>
         {items.length === 0 ? (
           <div class="empty-state">
@@ -30,22 +117,86 @@ export function CookingList({ path }: { path?: string }) {
             </div>
           </div>
         ) : (
-          <ul class="cooking-list">
-            {items.map((item) => (
-              <li key={item.id} class="cooking-list-item">
-                <a href={`/recipe/${item.id}`} class="cooking-list-link">
-                  {item.title}
-                </a>
-                <button
-                  class="btn btn-small"
-                  onClick={() => removeRecipe(item.id)}
-                  title="Remove from list"
-                >
-                  ×
-                </button>
-              </li>
-            ))}
-          </ul>
+          <>
+            {viewMode === "recipes" && (
+              <div class="cooking-list-items">
+                {items.map((item) => {
+                  const recipe = loadedRecipes.get(item.id);
+                  // Use item.servings if set, otherwise fallback to recipe default (or 1)
+                  // Note: updateServings in useCookingList updates the item state
+                  const currentServings =
+                    item.servings ?? recipe?.servings ?? 1;
+
+                  if (!recipe && loading) {
+                    return (
+                      <div key={item.id} class="cooking-list-card loading">
+                        Loading {item.title}...
+                      </div>
+                    );
+                  }
+
+                  if (!recipe && !loading && loadedRecipes.size > 0) {
+                     // Only show error if we've tried loading and it's missing
+                    return (
+                      <div key={item.id} class="cooking-list-card error">
+                        Failed to load {item.title}
+                        <button
+                          class="btn btn-small btn-danger"
+                          onClick={() => removeRecipe(item.id)}
+                          style={{ marginLeft: "1rem" }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    );
+                  }
+                  
+                  if (!recipe) return null;
+
+                  return (
+                    <div key={item.id} class="cooking-list-card">
+                      <div class="cooking-list-card-header">
+                        <h3>
+                          <a href={`/recipe/${item.id}`}>{item.title}</a>
+                        </h3>
+                        <button
+                          class="btn btn-small"
+                          onClick={() => removeRecipe(item.id)}
+                          title="Remove from list"
+                        >
+                          ×
+                        </button>
+                      </div>
+                      <ScalingControls
+                        baseServings={recipe.servings || 1}
+                        currentServings={currentServings}
+                        onServingsChange={(n) => updateServings(item.id, n)}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {viewMode === "shopping" && (
+              <div class="shopping-list">
+                <h2>Combined Ingredients</h2>
+                <ul class="ingredient-list">
+                  {shoppingList.map((item, idx) => (
+                    <li key={idx} class="ingredient-item">
+                      <input type="checkbox" class="ingredient-checkbox" />
+                      <span class="ingredient-quantity">
+                        {item.quantity > 0
+                          ? formatQuantity(item.quantity, item.unit)
+                          : ""}
+                      </span>
+                      <span class="ingredient-name">{item.name}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </>
         )}
       </main>
     </div>
