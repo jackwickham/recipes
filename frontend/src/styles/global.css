@@ -453,6 +453,12 @@ body {
   padding-top: 0.25rem;
 }
 
+.step-timers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 /* Rating buttons */
 .rating-buttons {
   display: flex;

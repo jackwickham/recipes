@@ -418,21 +418,23 @@ export function RecipeDetail({ id }: Props) {
                     <span class="step-number">{idx + 1}</span>
                     <div class="step-content">
                       <p>{renderedText}</p>
-                      {stepTimers.map((t, timerIdx) => {
-                        const timerId = `step-${step.id}-timer-${timerIdx}`;
-                        const timer = getTimer(timerId);
+                      <div class="step-timers">
+                        {stepTimers.map((t, timerIdx) => {
+                          const timerId = `step-${step.id}-timer-${timerIdx}`;
+                          const timer = getTimer(timerId);
 
-                        return (
-                          <Timer
-                            key={timerId}
-                            timer={timer}
-                            minutes={t.minutes}
-                            onStart={() => startTimer(timerId, t.minutes)}
-                            onStop={() => stopTimer(timerId)}
-                            onReset={() => resetTimer(timerId)}
-                          />
-                        );
-                      })}
+                          return (
+                            <Timer
+                              key={timerId}
+                              timer={timer}
+                              minutes={t.minutes}
+                              onStart={() => startTimer(timerId, t.minutes)}
+                              onStop={() => stopTimer(timerId)}
+                              onReset={() => resetTimer(timerId)}
+                            />
+                          );
+                        })}
+                      </div>
                     </div>
                   </li>
                 );
