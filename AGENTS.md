@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Personal recipe web app with LLM-powered import. See [overview.md](overview.md) for full documentation including features, configuration, API reference, and project structure.
+Personal recipe web app with LLM-powered import. See [overview.md](overview.md) for full documentation including features, configuration, API reference, and project structure. Make sure to update overview.md and AGENTS.md as appropriate after making substantial changes, to ensure that it's still up to date.
 
 ## Commands
 
@@ -59,3 +59,26 @@ Generation: `backend/src/services/recipe-parser.ts` (LLM prompt)
 ## Conventions
 
 - Preact uses `class` not `className` in JSX
+
+## Issue tracking
+
+Use Beads (`bd`) for issue tracking.
+
+```bash
+# Create new issues
+bd create "Add user authentication"
+bd create "Create LLM integration" -d "Description of what and why" -t feature -p 0
+
+# View all issues
+bd list
+
+# View issue details
+bd show <issue-id>
+
+# Create dependencies between tasks
+bd dep add <child> <parent>
+
+# Update issue status
+bd update <issue-id> --status in_progress
+bd update <issue-id> --status done
+```
