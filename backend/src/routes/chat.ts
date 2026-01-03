@@ -3,6 +3,7 @@ import {
   getRecipeById,
   getChatHistory,
   addChatMessage,
+  deleteChatHistory,
 } from "../db/queries.js";
 import { getLLM } from "../services/llm/index.js";
 import type { ParsedRecipe } from "@recipes/shared";
@@ -19,6 +20,18 @@ chatRouter.get("/:id/chat", (req, res) => {
 
   const history = getChatHistory(id);
   res.json(history);
+});
+
+// DELETE /api/recipes/:id/chat - Clear chat history
+chatRouter.delete("/:id/chat", (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid recipe ID" });
+    return;
+  }
+
+  deleteChatHistory(id);
+  res.json({ success: true });
 });
 
 // POST /api/recipes/:id/chat - Send message, get response

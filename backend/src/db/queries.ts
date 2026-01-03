@@ -388,3 +388,8 @@ export function addChatMessage(
   `
   ).run(recipeId, role, content, metadata ?? null);
 }
+
+export function deleteChatHistory(recipeId: number): void {
+  const db = getDb();
+  db.prepare("DELETE FROM chat_messages WHERE recipe_id = ?").run(recipeId);
+}

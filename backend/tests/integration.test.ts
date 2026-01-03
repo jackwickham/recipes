@@ -25,4 +25,11 @@ describe("Backend Integration Smoke Tests", () => {
     expect(response.status).toBe(200);
     expect(Array.isArray(response.body)).toBe(true);
   });
+
+  it("should handle chat history deletion", async () => {
+    // Assuming recipe 1 exists from sample data or setup
+    const response = await request(app).delete("/api/recipes/1/chat");
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ success: true });
+  });
 });

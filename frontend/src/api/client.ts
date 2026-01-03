@@ -123,6 +123,10 @@ export async function getChatHistory(recipeId: number): Promise<ChatMessage[]> {
   return request<ChatMessage[]>(`/recipes/${recipeId}/chat`);
 }
 
+export async function clearChatHistory(recipeId: number): Promise<void> {
+  await request(`/recipes/${recipeId}/chat`, { method: "DELETE" });
+}
+
 export async function sendChatMessage(
   recipeId: number,
   message: string

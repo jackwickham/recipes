@@ -3,6 +3,7 @@ import type { ParsedRecipe } from "@recipes/shared";
 import {
   getChatHistory,
   sendChatMessage,
+  clearChatHistory,
   type ChatMessage,
 } from "../api/client";
 import { renderStepText } from "../utils/scaling";
@@ -58,6 +59,18 @@ export function ChatModal({
       setMessages(history);
     } catch {
       // Ignore history loading errors
+    }
+  }
+
+  async function handleClearChat() {
+    if (!confirm("Are you sure you want to clear the chat history?")) return;
+    try {
+      await clearChatHistory(recipeId);
+      setMessages([]);
+      setPendingRecipes([]);
+      setShowPreviewIdx(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to clear chat");
     }
   }
 
@@ -123,9 +136,20 @@ export function ChatModal({
       >
         <div class="chat-header">
           <h2>Chat about {recipeTitle}</h2>
-          <button class="btn btn-small" onClick={onClose}>
-            Close
-          </button>
+          <div class="header-actions">
+            {messages.length > 0 && (
+              <button
+                class="btn btn-small"
+                onClick={handleClearChat}
+                title="Start a fresh conversation"
+              >
+                New Chat
+              </button>
+            )}
+            <button class="btn btn-small" onClick={onClose}>
+              Close
+            </button>
+          </div>
         </div>
 
         <div class="chat-messages">
