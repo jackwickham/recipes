@@ -43,7 +43,7 @@ export function loadConfig(): Config {
   return {
     port: parsed.port ?? 3000,
     database: {
-      path: parsed.database?.path ?? "./data/recipes.db",
+      path: process.env.DATABASE_PATH ?? parsed.database?.path ?? "./data/recipes.db",
     },
     llm: {
       provider: parsed.llm?.provider ?? "google",
