@@ -24,7 +24,9 @@ export function getDb(): Database.Database {
     db.pragma("foreign_keys = ON");
 
     // Initialize schema
-    const schema = readFileSync(path.join(__dirname, "schema.sql"), "utf-8");
+    const schemaPath = path.join(__dirname, "schema.sql");
+    console.log(`Initializing database schema from ${schemaPath}`);
+    const schema = readFileSync(schemaPath, "utf-8");
     db.exec(schema);
   }
 

@@ -45,10 +45,10 @@ COPY --from=builder /app/backend/dist ./backend/dist
 COPY --from=builder /app/frontend/dist ./frontend/dist
 
 # Copy schema file for database initialization
-COPY backend/src/db/schema.sql ./backend/src/db/schema.sql
+COPY backend/src/db/schema.sql ./backend/dist/db/schema.sql
 
 # Create data directory for SQLite database
-RUN mkdir -p /data
+RUN mkdir -p /app/data
 
 # Environment variables
 ENV NODE_ENV=production
