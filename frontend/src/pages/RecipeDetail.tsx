@@ -206,7 +206,21 @@ export function RecipeDetail({ id }: Props) {
   async function handleSaveAsVariant(parsed: ParsedRecipe) {
     if (!recipe) return;
 
-    const parentId = recipe.parentRecipeId || recipe.id;
+    // Calculate the Base ID (the root of the portion variant tree)
+    // If current recipe is a portion variant, its parent is the base.
+    // If current recipe is base or content variant, it IS the base.
+    const baseId =
+      recipe.variantType === "portion" && recipe.parentRecipeId
+        ? recipe.parentRecipeId
+        : recipe.id;
+
+    // Determine the target parent ID
+    // If creating a PORTION variant, force it to attach to the base ID
+    // Otherwise (e.g. content variant), respect LLM's choice or default to baseId
+    const finalParentId =
+      parsed.variantType === "portion"
+        ? baseId
+        : parsed.parentRecipeId ?? baseId;
 
     try {
       const newRecipe = await createRecipe({
@@ -218,7 +232,7 @@ export function RecipeDetail({ id }: Props) {
         sourceType: "text",
         sourceText: null,
         sourceContext: `Variant of: ${recipe.title}`,
-        parentRecipeId: parsed.parentRecipeId ?? parentId,
+        parentRecipeId: finalParentId,
         variantType: parsed.variantType ?? null,
         ingredients: parsed.ingredients,
         steps: parsed.steps,
@@ -230,8 +244,8 @@ export function RecipeDetail({ id }: Props) {
       setShowChat(false);
 
       // Navigate to parent with servings query param if it's a portion variant
-      if (newRecipe.variantType === 'portion') {
-        route(`/recipe/${parentId}?servings=${newRecipe.servings}`);
+      if (newRecipe.variantType === "portion") {
+        route(`/recipe/${baseId}?servings=${newRecipe.servings}`);
       } else {
         // Content variant - navigate to its own ID
         route(`/recipe/${newRecipe.id}`);
