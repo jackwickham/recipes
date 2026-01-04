@@ -110,7 +110,7 @@ function buildChatPrompt(
         notes: i.notes,
       })),
       steps: recipe!.steps.map((s) => s.instruction),
-      tags: recipe!.tags.map((t) => t.tag),
+      suggestedTags: recipe!.tags.map((t) => t.tag),
       portionVariants: recipe!.portionVariants?.map((v) => ({
         id: v.id,
         servings: v.servings,
@@ -239,13 +239,21 @@ function parseChatResponse(response: string): {
       recipes = [parsed.updatedRecipe];
     }
 
-    // Normalize steps to ensure they're objects with instruction fields
-    recipes = recipes.map(recipe => ({
-      ...recipe,
-      steps: recipe.steps.map(step =>
-        typeof step === 'string' ? { instruction: step } : step
-      )
-    }));
+    // Normalize recipes to ensure they match ParsedRecipe structure
+    recipes = recipes.map((recipe) => {
+      // Handle missing or mismatched tags field
+      // Some LLMs return "tags" instead of "suggestedTags"
+      const tags =
+        recipe.suggestedTags || (recipe as any).tags || [];
+        
+      return {
+        ...recipe,
+        steps: recipe.steps.map((step) =>
+          typeof step === "string" ? { instruction: step } : step
+        ),
+        suggestedTags: Array.isArray(tags) ? tags : [],
+      };
+    });
 
     return {
       text: parsed.message || response,
