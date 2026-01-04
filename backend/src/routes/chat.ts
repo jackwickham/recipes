@@ -129,7 +129,7 @@ For PORTION VARIANTS (same recipe, different serving size):
         {"name": "flour", "quantity": 500, "unit": "g", "notes": null}
       ],
       "steps": [
-        {"instruction": "Step with {{qty:500:g}} markers and {{timer:15}} if needed"}
+        {"instruction": "Step with 500g flour and {{timer:15}} if needed"}
       ],
       "suggestedTags": ["vegetarian", "quick"]
     }
@@ -150,7 +150,7 @@ For CONTENT CHANGES (different ingredients/method):
         {"name": "tofu", "quantity": 400, "unit": "g", "notes": null}
       ],
       "steps": [
-        {"instruction": "Step with {{qty:400:g}} markers"}
+        {"instruction": "Step with 400g tofu"}
       ],
       "suggestedTags": ["vegetarian"]
     }

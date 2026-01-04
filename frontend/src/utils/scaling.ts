@@ -1,32 +1,5 @@
 import { formatDuration } from "../hooks/useTimer";
 
-// Format a quantity with smart unit conversion
-export function formatQuantity(value: number, unit: string | null): string {
-  // Smart unit conversion for large values
-  if (unit === "g" && value >= 1000) {
-    return `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}kg`;
-  }
-  if (unit === "ml" && value >= 1000) {
-    return `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}L`;
-  }
-
-  // Format the number nicely
-  const formatted = Number.isInteger(value)
-    ? value.toString()
-    : value.toFixed(1).replace(/\.0$/, "");
-
-  return unit ? `${formatted}${unit}` : formatted;
-}
-
-// Parse {{qty:VALUE:UNIT}} markers and replace with formatted values
-export function renderQuantityMarkers(text: string): string {
-  return text.replace(/\{\{qty:([^:}]+):([^}]*)\}\}/g, (_, value, unit) => {
-    const numValue = parseFloat(value);
-    if (isNaN(numValue)) return value;
-    return formatQuantity(numValue, unit || null);
-  });
-}
-
 // Parse {{timer:MINUTES}} markers and return array of timer info
 export interface TimerInfo {
   minutes: number;
@@ -58,7 +31,5 @@ export function renderTimerMarkers(text: string): string {
 
 // Render all markers in step text
 export function renderStepText(text: string): string {
-  let result = renderQuantityMarkers(text);
-  result = renderTimerMarkers(result);
-  return result;
+  return renderTimerMarkers(text);
 }

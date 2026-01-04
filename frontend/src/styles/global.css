@@ -683,58 +683,6 @@ body {
   color: white;
 }
 
-/* Scaling controls */
-.scaling-controls {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  background: var(--color-bg-secondary);
-  border-radius: var(--radius);
-  margin-bottom: 1.5rem;
-}
-
-.scaling-label {
-  font-weight: 500;
-  margin-right: 0.5rem;
-}
-
-.scaling-btn {
-  width: 2rem;
-  height: 2rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  background: var(--color-bg);
-  font-size: 1.25rem;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.scaling-btn:hover:not(:disabled) {
-  background: var(--color-border);
-}
-
-.scaling-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.scaling-value {
-  min-width: 2rem;
-  text-align: center;
-  font-weight: 600;
-  font-size: 1.1rem;
-}
-
-.scaling-indicator {
-  margin-left: 0.5rem;
-  color: var(--color-text-secondary);
-  font-size: 0.875rem;
-}
-
 /* Portion Picker */
 .portion-picker {
   display: flex;

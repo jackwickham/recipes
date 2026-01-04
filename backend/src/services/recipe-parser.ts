@@ -23,15 +23,10 @@ IMPORTANT RULES:
    - arugula → rocket
    - shrimp → prawns
    - ground beef → beef mince
-4. In step instructions, embed quantities using {{qty:VALUE:UNIT}} markers where VALUE is the number and UNIT is the unit (g, ml, tsp, tbsp, or empty for countable items). Examples:
-   - "Add {{qty:500:g}} flour" (500 grams)
-   - "Pour in {{qty:200:ml}} milk" (200 millilitres)
-   - "Add {{qty:2:tsp}} salt" (2 teaspoons)
-   - "Beat {{qty:3:}} eggs" (3 eggs, no unit)
-5. Mark timer durations with {{timer:M}} where M is minutes (e.g., {{timer:15}} for 15 minutes, {{timer:0.5}} for 30 seconds)
-6. Suggest appropriate tags from: pasta, indian, mexican, asian, mediterranean, british, american, main, side, dessert, snack, breakfast, quick, vegetarian, vegan, one-pot, make-ahead, soup, salad, baking
-7. SPLIT STEPS: Each step should focus on ONE main action. If a step contains multiple unrelated actions, split them into separate steps.
-8. MULTIPLE PORTION SIZES: If the recipe provides quantities for multiple serving sizes (e.g., "For 2 people: 200g flour, For 4 people: 400g flour"), you MUST extract ALL variants using the multi-variant format below.
+4. Mark timer durations with {{timer:M}} where M is minutes (e.g., {{timer:15}} for 15 minutes, {{timer:0.5}} for 30 seconds)
+5. Suggest appropriate tags from: pasta, indian, mexican, asian, mediterranean, british, american, main, side, dessert, snack, breakfast, quick, vegetarian, vegan, one-pot, make-ahead, soup, salad, baking
+6. SPLIT STEPS: Each step should focus on ONE main action. If a step contains multiple unrelated actions, split them into separate steps.
+7. MULTIPLE PORTION SIZES: If the recipe provides quantities for multiple serving sizes (e.g., "For 2 people: 200g flour, For 4 people: 400g flour"), you MUST extract ALL variants using the multi-variant format below.
 
 SINGLE SERVING FORMAT (when recipe has one serving size):
 {
@@ -45,8 +40,8 @@ SINGLE SERVING FORMAT (when recipe has one serving size):
     {"name": "eggs", "quantity": 3, "unit": null, "notes": null}
   ],
   "steps": [
-    {"instruction": "Add {{qty:500:g}} flour to a bowl."},
-    {"instruction": "Beat {{qty:3:}} eggs and mix in. Cook for {{timer:5}}."}
+    {"instruction": "Add 500g flour to a bowl."},
+    {"instruction": "Beat 3 eggs and mix in. Cook for {{timer:5}}."}
   ],
   "suggestedTags": ["main", "quick", "vegetarian"]
 }
@@ -66,8 +61,8 @@ MULTI-VARIANT FORMAT (when recipe has quantities for multiple serving sizes):
         {"name": "eggs", "quantity": 2, "unit": null, "notes": null}
       ],
       "steps": [
-        {"instruction": "Add {{qty:250:g}} flour to a bowl."},
-        {"instruction": "Beat {{qty:2:}} eggs and mix in."}
+        {"instruction": "Add 250g flour to a bowl."},
+        {"instruction": "Beat 2 eggs and mix in."}
       ]
     },
     {
@@ -79,8 +74,8 @@ MULTI-VARIANT FORMAT (when recipe has quantities for multiple serving sizes):
         {"name": "eggs", "quantity": 4, "unit": null, "notes": null}
       ],
       "steps": [
-        {"instruction": "Add {{qty:500:g}} flour to a bowl."},
-        {"instruction": "Beat {{qty:4:}} eggs and mix in."}
+        {"instruction": "Add 500g flour to a bowl."},
+        {"instruction": "Beat 4 eggs and mix in."}
       ]
     }
   ]
@@ -102,11 +97,10 @@ IMPORTANT RULES:
 1. Use metric units (grams, millilitres, celsius)
 2. Use fan oven temperatures
 3. Use British English ingredient names (aubergine not eggplant, coriander not cilantro, etc.)
-4. In step instructions, embed quantities using {{qty:VALUE:UNIT}} markers
-5. Mark timer durations with {{timer:M}} where M is minutes (e.g., {{timer:15}} for 15 minutes, {{timer:0.5}} for 30 seconds)
-6. Create practical, delicious recipes that a home cook can make
-7. Be creative but realistic with ingredients and techniques
-8. Suggest appropriate tags
+4. Mark timer durations with {{timer:M}} where M is minutes (e.g., {{timer:15}} for 15 minutes, {{timer:0.5}} for 30 seconds)
+5. Create practical, delicious recipes that a home cook can make
+6. Be creative but realistic with ingredients and techniques
+7. Suggest appropriate tags
 
 Return ONLY valid JSON in this exact format:
 {
@@ -120,8 +114,8 @@ Return ONLY valid JSON in this exact format:
     {"name": "eggs", "quantity": 3, "unit": null, "notes": null}
   ],
   "steps": [
-    {"instruction": "Add {{qty:500:g}} flour to a bowl."},
-    {"instruction": "Beat {{qty:3:}} eggs and mix in. Cook for {{timer:5}}."}
+    {"instruction": "Add 500g flour to a bowl."},
+    {"instruction": "Beat 3 eggs and mix in. Cook for {{timer:5}}."}
   ],
   "suggestedTags": ["main", "quick", "vegetarian"]
 }
@@ -165,7 +159,6 @@ IMPORTANT RULES:
 2. Adjust cooking times only if necessary (e.g., a larger roast takes longer, but boiling pasta doesn't).
 3. Return the complete recipe as valid JSON.
 4. Keep the same title, description, and tags.
-5. In step instructions, update {{qty:VALUE:UNIT}} markers to match the new quantities.
 
 Return ONLY valid JSON in this exact format:
 {
@@ -178,7 +171,7 @@ Return ONLY valid JSON in this exact format:
     {"name": "flour", "quantity": 500, "unit": "g", "notes": "sifted"}
   ],
   "steps": [
-    {"instruction": "Add {{qty:500:g}} flour..."}
+    {"instruction": "Add 500g flour..."}
   ],
   "suggestedTags": ["tag1", "tag2"]
 }

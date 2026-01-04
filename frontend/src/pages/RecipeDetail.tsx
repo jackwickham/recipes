@@ -19,7 +19,6 @@ import { useTimer } from "../hooks/useTimer";
 import { useWakeLock } from "../hooks/useWakeLock";
 import { useCookingList } from "../hooks/useCookingList";
 import {
-  formatQuantity,
   renderStepText,
   extractTimers,
 } from "../utils/scaling";
@@ -496,7 +495,7 @@ export function RecipeDetail({ id }: Props) {
                   />
                   <span class="ingredient-quantity">
                     {ing.quantity !== null
-                      ? formatQuantity(ing.quantity, ing.unit)
+                      ? `${ing.quantity.toString().replace(/\.0$/, "")}${ing.unit || ""}`
                       : ""}
                   </span>
                   <span class="ingredient-name">{ing.name}</span>
