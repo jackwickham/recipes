@@ -598,9 +598,7 @@ export function RecipeDetail({ id }: Props) {
             setShowScalePreview(false);
             setScaledRecipe(null);
           }}
-          onSaveAsNew={handleSaveAsNew}
-          onSaveAsVariant={handleSaveAsVariant}
-          onReplaceRecipe={handleReplaceRecipe}
+          onSave={handleSaveAsVariant}
           title={`Scale to ${scaledRecipe.servings} portions`}
         />
       )}
