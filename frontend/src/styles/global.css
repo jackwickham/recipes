@@ -735,6 +735,75 @@ body {
   font-size: 0.875rem;
 }
 
+/* Portion Picker */
+.portion-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius);
+  margin-bottom: 1.5rem;
+}
+
+.portion-label {
+  font-weight: 500;
+}
+
+.portion-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.portion-btn {
+  min-width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.75rem;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.portion-btn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  background: var(--color-bg-secondary);
+}
+
+.portion-btn.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+  cursor: default;
+}
+
+.portion-btn:disabled:not(.active) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.portion-btn.portion-add {
+  background: transparent;
+  border-style: dashed;
+  color: var(--color-text-secondary);
+}
+
+.portion-btn.portion-add:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.portion-value {
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
 /* Timer */
 .timer-start-btn {
   display: inline-block;

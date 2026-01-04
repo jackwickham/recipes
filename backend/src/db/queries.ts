@@ -7,6 +7,9 @@ import type {
   RecipeWithDetails,
   RecipeRef,
   CreateRecipeInput,
+  PortionVariantRef,
+  ParsedRecipeWithVariants,
+  VariantType,
 } from "@recipes/shared";
 
 // Recipe queries
@@ -14,6 +17,7 @@ import type {
 export function getAllRecipes(): RecipeWithDetails[] {
   const db = getDb();
 
+  // Only get parent recipes (not variants) for the main list
   const recipes = db
     .prepare(
       `
@@ -25,9 +29,11 @@ export function getAllRecipes(): RecipeWithDetails[] {
       source_text as sourceText,
       source_context as sourceContext,
       parent_recipe_id as parentRecipeId,
+      variant_type as variantType,
       created_at as createdAt,
       updated_at as updatedAt
     FROM recipes
+    WHERE parent_recipe_id IS NULL
     ORDER BY created_at DESC
   `
     )
@@ -38,6 +44,7 @@ export function getAllRecipes(): RecipeWithDetails[] {
     ingredients: getIngredientsByRecipeId(recipe.id),
     steps: getStepsByRecipeId(recipe.id),
     tags: getTagsByRecipeId(recipe.id),
+    portionVariants: getPortionVariants(recipe.id),
   }));
 }
 
@@ -55,6 +62,7 @@ export function getRecipeById(id: number): RecipeWithDetails | null {
       source_text as sourceText,
       source_context as sourceContext,
       parent_recipe_id as parentRecipeId,
+      variant_type as variantType,
       created_at as createdAt,
       updated_at as updatedAt
     FROM recipes
@@ -65,7 +73,8 @@ export function getRecipeById(id: number): RecipeWithDetails | null {
 
   if (!recipe) return null;
 
-  const variants = db
+  // Get content variants (non-portion variants)
+  const contentVariants = db
     .prepare(
       `
     SELECT
@@ -76,10 +85,11 @@ export function getRecipeById(id: number): RecipeWithDetails | null {
       source_text as sourceText,
       source_context as sourceContext,
       parent_recipe_id as parentRecipeId,
+      variant_type as variantType,
       created_at as createdAt,
       updated_at as updatedAt
     FROM recipes
-    WHERE parent_recipe_id = ?
+    WHERE parent_recipe_id = ? AND (variant_type = 'content' OR variant_type IS NULL)
   `
     )
     .all(id) as Recipe[];
@@ -93,12 +103,23 @@ export function getRecipeById(id: number): RecipeWithDetails | null {
     parentRecipe = parent;
   }
 
+  // Get portion variants - either children of this recipe or siblings (if this is a portion variant)
+  let portionVariants: PortionVariantRef[];
+  if (recipe.variantType === "portion" && recipe.parentRecipeId) {
+    // This is a portion variant - get siblings including parent
+    portionVariants = getPortionVariantsWithParent(recipe.parentRecipeId);
+  } else {
+    // This is a parent recipe - get portion variant children
+    portionVariants = getPortionVariants(id);
+  }
+
   return {
     ...recipe,
     ingredients: getIngredientsByRecipeId(id),
     steps: getStepsByRecipeId(id),
     tags: getTagsByRecipeId(id),
-    variants,
+    portionVariants,
+    contentVariants: contentVariants.length > 0 ? contentVariants : undefined,
     parentRecipe,
   };
 }
@@ -111,8 +132,8 @@ export function createRecipe(input: CreateRecipeInput): number {
       `
     INSERT INTO recipes (
       title, description, servings, prep_time_minutes, cook_time_minutes,
-      rating, source_type, source_text, source_context, parent_recipe_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      rating, source_type, source_text, source_context, parent_recipe_id, variant_type
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `
     )
     .run(
@@ -125,7 +146,8 @@ export function createRecipe(input: CreateRecipeInput): number {
       input.sourceType,
       input.sourceText ?? null,
       input.sourceContext ?? null,
-      input.parentRecipeId ?? null
+      input.parentRecipeId ?? null,
+      input.variantType ?? null
     );
 
   const recipeId = result.lastInsertRowid as number;
@@ -329,6 +351,103 @@ function getTagsByRecipeId(recipeId: number): Tag[] {
   `
     )
     .all(recipeId) as Tag[];
+}
+
+// Get portion variants for a parent recipe (children with variant_type = 'portion')
+function getPortionVariants(parentRecipeId: number): PortionVariantRef[] {
+  const db = getDb();
+  return db
+    .prepare(
+      `
+    SELECT id, servings
+    FROM recipes
+    WHERE parent_recipe_id = ? AND variant_type = 'portion'
+    ORDER BY servings
+  `
+    )
+    .all(parentRecipeId) as PortionVariantRef[];
+}
+
+// Get portion variants including the parent recipe itself (for sibling lookup)
+function getPortionVariantsWithParent(parentRecipeId: number): PortionVariantRef[] {
+  const db = getDb();
+
+  // Get the parent's servings
+  const parent = db
+    .prepare("SELECT id, servings FROM recipes WHERE id = ?")
+    .get(parentRecipeId) as PortionVariantRef | undefined;
+
+  // Get all portion variant children
+  const variants = getPortionVariants(parentRecipeId);
+
+  // Include parent in the list if it has servings
+  if (parent && parent.servings) {
+    return [parent, ...variants].sort((a, b) => (a.servings ?? 0) - (b.servings ?? 0));
+  }
+
+  return variants;
+}
+
+// Create multiple portion variants from a parsed recipe with variants
+export function createRecipeWithPortionVariants(
+  parsed: ParsedRecipeWithVariants,
+  sourceType: "photo" | "url" | "text",
+  sourceText: string | null,
+  sourceContext: string | null
+): number[] {
+  const db = getDb();
+  const createdIds: number[] = [];
+
+  // Sort variants by servings - smallest becomes the parent
+  const sortedVariants = [...parsed.variants].sort(
+    (a, b) => a.servings - b.servings
+  );
+
+  // Create the first variant as the parent recipe
+  const firstVariant = sortedVariants[0];
+  const parentId = createRecipe({
+    title: parsed.title,
+    description: parsed.description,
+    servings: firstVariant.servings,
+    prepTimeMinutes: firstVariant.prepTimeMinutes,
+    cookTimeMinutes: firstVariant.cookTimeMinutes,
+    sourceType,
+    sourceText,
+    sourceContext,
+    ingredients: firstVariant.ingredients,
+    steps: firstVariant.steps,
+    tags: parsed.suggestedTags.map((tag) => ({
+      tag,
+      isAutoGenerated: true,
+    })),
+  });
+  createdIds.push(parentId);
+
+  // Create remaining variants as portion variants linked to parent
+  for (let i = 1; i < sortedVariants.length; i++) {
+    const variant = sortedVariants[i];
+    const variantId = createRecipe({
+      title: parsed.title,
+      description: parsed.description,
+      servings: variant.servings,
+      prepTimeMinutes: variant.prepTimeMinutes,
+      cookTimeMinutes: variant.cookTimeMinutes,
+      sourceType,
+      sourceText,
+      sourceContext,
+      parentRecipeId: parentId,
+      variantType: "portion",
+      ingredients: variant.ingredients,
+      steps: variant.steps,
+      tags: parsed.suggestedTags.map((tag) => ({
+        tag,
+        isAutoGenerated: true,
+      })),
+    });
+    createdIds.push(variantId);
+  }
+
+  return createdIds;
 }
 
 // Tag queries

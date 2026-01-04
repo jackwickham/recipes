@@ -9,7 +9,7 @@ import {
   createRecipe,
   updateRecipe,
 } from "../api/client";
-import { ScalingControls } from "../components/ScalingControls";
+import { PortionPicker } from "../components/PortionPicker";
 import { Timer } from "../components/Timer";
 import { ChatModal } from "../components/ChatModal";
 import { useTimer } from "../hooks/useTimer";
@@ -52,7 +52,6 @@ export function RecipeDetail({ id }: Props) {
   );
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showChat, setShowChat] = useState(false);
-  const [currentServings, setCurrentServings] = useState<number>(1);
 
   const { timers, startTimer, stopTimer, resetTimer, getTimer } = useTimer();
   const wakeLock = useWakeLock();
@@ -70,7 +69,6 @@ export function RecipeDetail({ id }: Props) {
       setError(null);
       const data = await getRecipe(recipeId);
       setRecipe(data);
-      setCurrentServings(data.servings || 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load recipe");
     } finally {
@@ -78,14 +76,19 @@ export function RecipeDetail({ id }: Props) {
     }
   }
 
-  const baseServings = recipe?.servings || 1;
-  const scale = currentServings / baseServings;
-
-  // Shuffle variants once when recipe loads
-  const shuffledVariants = useMemo(
-    () => (recipe?.variants ? shuffleArray(recipe.variants) : []),
-    [recipe?.variants]
+  // Shuffle content variants once when recipe loads
+  const shuffledContentVariants = useMemo(
+    () => (recipe?.contentVariants ? shuffleArray(recipe.contentVariants) : []),
+    [recipe?.contentVariants]
   );
+
+  function handleNavigateToVariant(variantId: number) {
+    route(`/recipe/${variantId}`);
+  }
+
+  function handleRequestNewPortion() {
+    setShowChat(true);
+  }
 
   async function handleRatingChange(rating: "meh" | "good" | "great" | null) {
     if (!recipe) return;
@@ -157,7 +160,8 @@ export function RecipeDetail({ id }: Props) {
         sourceType: "text",
         sourceText: null,
         sourceContext: `Variant of: ${recipe.title}`,
-        parentRecipeId: recipe.id,
+        parentRecipeId: parsed.parentRecipeId ?? recipe.id,
+        variantType: parsed.variantType ?? null,
         ingredients: parsed.ingredients,
         steps: parsed.steps,
         tags: parsed.suggestedTags.map((tag) => ({
@@ -327,9 +331,7 @@ export function RecipeDetail({ id }: Props) {
           ) : (
             <button
               class="btn btn-primary"
-              onClick={() =>
-                cookingList.addRecipe(recipe.id, recipe.title, currentServings)
-              }
+              onClick={() => cookingList.addRecipe(recipe.id, recipe.title)}
             >
               Add to List
             </button>
@@ -350,11 +352,21 @@ export function RecipeDetail({ id }: Props) {
           </div>
         )}
 
-        {shuffledVariants.length > 0 && (
+        {/* Portion Picker for recipes with portion variants */}
+        <PortionPicker
+          currentServings={recipe.servings || 1}
+          portionVariants={recipe.portionVariants || []}
+          currentRecipeId={recipe.id}
+          onNavigateToVariant={handleNavigateToVariant}
+          onRequestNewPortion={handleRequestNewPortion}
+        />
+
+        {/* Content variants (different recipes, not just different portions) */}
+        {shuffledContentVariants.length > 0 && (
           <div class="variants-section">
-            <h3 class="variants-title">Variants</h3>
+            <h3 class="variants-title">Also try</h3>
             <div class="variants-carousel">
-              {shuffledVariants.map((v) => (
+              {shuffledContentVariants.map((v) => (
                 <a key={v.id} href={`/recipe/${v.id}`} class="variant-card">
                   <div class="variant-card-content">
                     <span class="variant-card-title">{v.title}</span>
@@ -368,14 +380,6 @@ export function RecipeDetail({ id }: Props) {
               ))}
             </div>
           </div>
-        )}
-
-        {recipe.servings && (
-          <ScalingControls
-            baseServings={baseServings}
-            currentServings={currentServings}
-            onServingsChange={setCurrentServings}
-          />
         )}
 
         {recipe.ingredients.length > 0 && (
@@ -392,7 +396,7 @@ export function RecipeDetail({ id }: Props) {
                   />
                   <span class="ingredient-quantity">
                     {ing.quantity !== null
-                      ? formatQuantity(ing.quantity, ing.unit, scale)
+                      ? formatQuantity(ing.quantity, ing.unit)
                       : ""}
                   </span>
                   <span class="ingredient-name">{ing.name}</span>
@@ -411,7 +415,7 @@ export function RecipeDetail({ id }: Props) {
             <ol class="step-list">
               {recipe.steps.map((step, idx) => {
                 const stepTimers = extractTimers(step.instruction);
-                const renderedText = renderStepText(step.instruction, scale);
+                const renderedText = renderStepText(step.instruction);
 
                 return (
                   <li key={step.id} class="step-item">

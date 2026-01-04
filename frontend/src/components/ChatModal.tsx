@@ -270,7 +270,7 @@ export function ChatModal({
                         <h4>Method</h4>
                         <ol>
                           {recipe.steps.map((step, i) => (
-                            <li key={i}>{renderStepText(step.instruction, 1)}</li>
+                            <li key={i}>{renderStepText(step.instruction)}</li>
                           ))}
                         </ol>
                       </div>

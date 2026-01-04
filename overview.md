@@ -6,7 +6,7 @@ A personal recipe web app with LLM-powered import, quantity scaling, and cooking
 
 - **Smart Import**: Add recipes from photos, URLs, or pasted text - the LLM extracts and structures everything
 - **Automatic Normalisation**: Converts to metric units, fan oven temperatures, and British ingredient names
-- **Quantity Scaling**: Adjust servings and all quantities update in real-time
+- **Multi-Portion Variants**: When recipes provide quantities for multiple serving sizes, all variants are stored with exact quantities - no scaling artifacts. Request new portion sizes via LLM chat.
 - **Cooking Timers**: Start timers directly from recipe steps with audio alerts
 - **Screen Wake Lock**: Keep your screen on while cooking
 - **Recipe Chat**: Ask questions about a recipe or request modifications (make it vegetarian, substitute ingredients, etc.)
@@ -104,13 +104,15 @@ Recipes use special markers in step instructions that enable interactive feature
 
 ### Quantity Markers
 
-Format: `{{qty:VALUE:UNIT}}` - Scales with serving adjustments
+Format: `{{qty:VALUE:UNIT}}` - Displays quantities inline
 
 ```
-Add {{qty:500:g}} flour          → "Add 500g flour" (or "Add 1kg flour" at 2x)
+Add {{qty:500:g}} flour          → "Add 500g flour"
 Beat {{qty:3:}} eggs             → "Beat 3 eggs" (no unit for countable items)
 Pour in {{qty:200:ml}} milk      → "Pour in 200ml milk"
 ```
+
+**Note**: Quantity markers are stored with exact values per portion variant. When a recipe has multiple portion sizes (e.g., 2, 4, 6 servings), each variant stores the precise quantities for that serving size. Switching portions navigates to the corresponding variant recipe.
 
 ### Timer Markers
 
@@ -128,12 +130,13 @@ Bake for {{timer:45}}            → Shows a 45-minute timer button
 ### Recipes
 
 ```
-GET    /api/recipes              # List all recipes (with ingredients, tags)
-GET    /api/recipes/:id          # Get single recipe with full details
-POST   /api/recipes              # Create new recipe
-PUT    /api/recipes/:id          # Update recipe
-DELETE /api/recipes/:id          # Delete recipe
-PATCH  /api/recipes/:id/rating   # Update rating only
+GET    /api/recipes                  # List all recipes (with ingredients, tags)
+GET    /api/recipes/:id              # Get single recipe with full details
+POST   /api/recipes                  # Create new recipe
+POST   /api/recipes/with-variants    # Create recipe with portion variants
+PUT    /api/recipes/:id              # Update recipe
+DELETE /api/recipes/:id              # Delete recipe
+PATCH  /api/recipes/:id/rating       # Update rating only
 ```
 
 ### Import
@@ -142,6 +145,7 @@ PATCH  /api/recipes/:id/rating   # Update rating only
 POST   /api/import/url           # Import from URL (fetches page, extracts recipe)
 POST   /api/import/photos        # Import from photos (base64 images)
 POST   /api/import/text          # Import from pasted text
+POST   /api/import/generate      # Generate recipe from text prompt
 ```
 
 ### Chat
@@ -191,15 +195,16 @@ recipes/
 │       ├── components/
 │       │   ├── RecipeCard.tsx    # Grid card
 │       │   ├── RecipeForm.tsx    # Add/edit form
-│       │   ├── ScalingControls.tsx
+│       │   ├── PortionPicker.tsx # Portion variant selector
 │       │   ├── Timer.tsx
-│       │   └── ChatModal.tsx
+│       │   ├── ChatModal.tsx
+│       │   └── RecipeGenerator.tsx
 │       ├── hooks/
 │       │   ├── useTimer.ts       # Timer state management
 │       │   ├── useWakeLock.ts    # Screen wake lock API
 │       │   └── useCookingList.ts # localStorage persistence
 │       └── utils/
-│           └── scaling.ts        # Quantity scaling logic
+│           └── scaling.ts        # Quantity marker formatting
 │
 ├── shared/
 │   └── types.ts                  # Shared TypeScript interfaces
@@ -228,6 +233,10 @@ CREATE TABLE recipes (
     source_text TEXT,
     source_context TEXT,
     parent_recipe_id INTEGER REFERENCES recipes(id) ON DELETE SET NULL,
+    variant_type TEXT CHECK(variant_type IN ('portion', 'content')),
+    -- 'portion' = same recipe, different serving size
+    -- 'content' = different ingredients/method (e.g., vegetarian version)
+    -- NULL = standalone recipe (not a variant)
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

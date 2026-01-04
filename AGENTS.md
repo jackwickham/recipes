@@ -44,11 +44,15 @@ npm run start
 
 Step instructions contain markers that the frontend renders interactively:
 
-- `{{qty:VALUE:UNIT}}` - Scalable quantity (e.g., `{{qty:500:g}}` for 500g)
+- `{{qty:VALUE:UNIT}}` - Quantity display (e.g., `{{qty:500:g}}` for 500g). When a recipe has multiple portion variants, each variant stores exact quantities.
 - `{{timer:MINUTES}}` - Timer button (e.g., `{{timer:15}}` for 15 min)
 
 Parsing: `frontend/src/utils/scaling.ts`
 Generation: `backend/src/services/recipe-parser.ts` (LLM prompt)
+
+## Portion Variants
+
+When a recipe source provides exact quantities for multiple serving sizes (e.g., 2, 3, 4 portions), all variants are extracted and stored as separate linked recipes with `variant_type='portion'`. Users can switch between portions using the PortionPicker UI or request new portion sizes via LLM chat. Each variant has exact quantities—no client-side scaling.
 
 ## Configuration
 

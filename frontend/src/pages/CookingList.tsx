@@ -2,11 +2,10 @@ import { useEffect, useState, useMemo } from "preact/hooks";
 import type { RecipeWithDetails } from "@recipes/shared";
 import { getRecipe } from "../api/client";
 import { useCookingList } from "../hooks/useCookingList";
-import { ScalingControls } from "../components/ScalingControls";
 import { formatQuantity } from "../utils/scaling";
 
 export function CookingList({ path }: { path?: string }) {
-  const { items, removeRecipe, updateServings, clearList } = useCookingList();
+  const { items, removeRecipe, clearList } = useCookingList();
   const [loadedRecipes, setLoadedRecipes] = useState<
     Map<number, RecipeWithDetails>
   >(new Map());
@@ -50,15 +49,11 @@ export function CookingList({ path }: { path?: string }) {
       const recipe = loadedRecipes.get(item.id);
       if (!recipe) return;
 
-      const baseServings = recipe.servings || 1;
-      const targetServings = item.servings || baseServings;
-      const scale = targetServings / baseServings;
-
       recipe.ingredients.forEach((ing) => {
         // normalization key: lower case name + unit
         const key = `${ing.name.toLowerCase().trim()}|${ing.unit || ""}`;
         const current = ingredients.get(key);
-        const addedQty = ing.quantity ? ing.quantity * scale : 0;
+        const addedQty = ing.quantity || 0;
 
         if (current) {
           current.quantity += addedQty;
@@ -122,10 +117,6 @@ export function CookingList({ path }: { path?: string }) {
               <div class="cooking-list-items">
                 {items.map((item) => {
                   const recipe = loadedRecipes.get(item.id);
-                  // Use item.servings if set, otherwise fallback to recipe default (or 1)
-                  // Note: updateServings in useCookingList updates the item state
-                  const currentServings =
-                    item.servings ?? recipe?.servings ?? 1;
 
                   if (!recipe && loading) {
                     return (
@@ -136,7 +127,7 @@ export function CookingList({ path }: { path?: string }) {
                   }
 
                   if (!recipe && !loading && loadedRecipes.size > 0) {
-                     // Only show error if we've tried loading and it's missing
+                    // Only show error if we've tried loading and it's missing
                     return (
                       <div key={item.id} class="cooking-list-card error">
                         Failed to load {item.title}
@@ -150,7 +141,7 @@ export function CookingList({ path }: { path?: string }) {
                       </div>
                     );
                   }
-                  
+
                   if (!recipe) return null;
 
                   return (
@@ -167,11 +158,11 @@ export function CookingList({ path }: { path?: string }) {
                           ×
                         </button>
                       </div>
-                      <ScalingControls
-                        baseServings={recipe.servings || 1}
-                        currentServings={currentServings}
-                        onServingsChange={(n) => updateServings(item.id, n)}
-                      />
+                      {recipe.servings && (
+                        <span class="cooking-list-servings">
+                          {recipe.servings} portions
+                        </span>
+                      )}
                     </div>
                   );
                 })}

@@ -97,6 +97,7 @@ function buildChatPrompt(
 ): string {
   const recipeJson = JSON.stringify(
     {
+      id: recipe!.id,
       title: recipe!.title,
       description: recipe!.description,
       servings: recipe!.servings,
@@ -110,6 +111,10 @@ function buildChatPrompt(
       })),
       steps: recipe!.steps.map((s) => s.instruction),
       tags: recipe!.tags.map((t) => t.tag),
+      portionVariants: recipe!.portionVariants?.map((v) => ({
+        id: v.id,
+        servings: v.servings,
+      })),
     },
     null,
     2
@@ -121,8 +126,16 @@ ${recipeJson}
 
 When answering questions:
 1. Be helpful and conversational
-2. If the user asks for modifications (substitutions, dietary changes, scaling), provide the updated recipe
+2. If the user asks for modifications (substitutions, dietary changes, content changes), provide the updated recipe
 3. Use British English and metric units
+
+PORTION VARIANTS:
+- If the user requests a different portion size (e.g., "make this for 6 people"), create a PORTION VARIANT
+- Portion variants should have the SAME title and description as the parent recipe
+- Use existing portionVariants as reference for accurate quantity interpolation
+- Include "parentRecipeId" and "variantType": "portion" in the response
+- ONLY create portion variants when the user explicitly requests a different portion size
+- For content changes (e.g., "make it vegetarian"), create a regular recipe WITHOUT parentRecipeId
 
 IMPORTANT: Your response must be valid JSON in this format:
 {
@@ -130,9 +143,34 @@ IMPORTANT: Your response must be valid JSON in this format:
   "updatedRecipes": []
 }
 
-If you're providing modified or new recipes, include them in updatedRecipes as an array of objects in this format:
+If you're providing modified recipes, include them in updatedRecipes as an array of objects.
+
+For PORTION VARIANTS (same recipe, different serving size):
 {
-  "message": "Your explanation of the changes",
+  "message": "I've created a version for 6 servings",
+  "updatedRecipes": [
+    {
+      "title": "Same Title as Parent",
+      "description": "Same description",
+      "servings": 6,
+      "prepTimeMinutes": 15,
+      "cookTimeMinutes": 30,
+      "parentRecipeId": ${recipe!.parentRecipeId || recipe!.id},
+      "variantType": "portion",
+      "ingredients": [
+        {"name": "flour", "quantity": 500, "unit": "g", "notes": null}
+      ],
+      "steps": [
+        {"instruction": "Step with {{qty:500:g}} markers and {{timer:15}} if needed"}
+      ],
+      "suggestedTags": ["vegetarian", "quick"]
+    }
+  ]
+}
+
+For CONTENT CHANGES (different ingredients/method):
+{
+  "message": "Here's a vegetarian version",
   "updatedRecipes": [
     {
       "title": "Modified Recipe Title",
@@ -141,12 +179,12 @@ If you're providing modified or new recipes, include them in updatedRecipes as a
       "prepTimeMinutes": 15,
       "cookTimeMinutes": 30,
       "ingredients": [
-        {"name": "flour", "quantity": 500, "unit": "g", "notes": null}
+        {"name": "tofu", "quantity": 400, "unit": "g", "notes": null}
       ],
       "steps": [
-        {"instruction": "Step with {{qty:500:g}} markers and {{timer:15}} if needed"}
+        {"instruction": "Step with {{qty:400:g}} markers"}
       ],
-      "suggestedTags": ["vegetarian", "quick"]
+      "suggestedTags": ["vegetarian"]
     }
   ]
 }

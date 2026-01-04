@@ -6,9 +6,9 @@ A recipe web app designed to make cooking easier with LLM-powered import, smart 
 
 - **Smart Import**: Add recipes from photos, URLs, or pasted text - the LLM extracts and structures everything.
 - **Automatic Normalisation**: Automatically converts units to metric, adapts to fan oven temperatures, and standardizes ingredient names.
-- **Quantity Scaling**: Adjust servings and all quantities update in real-time.
+- **Multi-Portion Variants**: When recipes provide quantities for multiple serving sizes, all variants are stored with exact quantities - no scaling artifacts.
 - **Cooking Timers**: Start timers directly from recipe steps with audio alerts.
-- **Recipe Chat**: Ask questions about a recipe or request modifications (make it vegetarian, substitute ingredients, etc.).
+- **Recipe Chat**: Ask questions about a recipe or request modifications (make it vegetarian, substitute ingredients, etc.). Can also request new portion sizes.
 - **Cooking List**: Save recipes you're planning to make.
 - **Screen Wake Lock**: Keep your screen on while cooking.
 

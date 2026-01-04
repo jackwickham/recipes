@@ -3,10 +3,12 @@ import {
   getAllRecipes,
   getRecipeById,
   createRecipe,
+  createRecipeWithPortionVariants,
   updateRecipe,
   deleteRecipe,
   updateRecipeRating,
 } from "../db/queries.js";
+import type { ParsedRecipeWithVariants } from "@recipes/shared";
 
 export const recipesRouter = Router();
 
@@ -33,6 +35,26 @@ recipesRouter.post("/", (req, res) => {
   const id = createRecipe(req.body);
   const recipe = getRecipeById(id);
   res.status(201).json(recipe);
+});
+
+// POST /api/recipes/with-variants - Create recipe with portion variants
+recipesRouter.post("/with-variants", (req, res) => {
+  const { parsed, sourceType, sourceText, sourceContext } = req.body as {
+    parsed: ParsedRecipeWithVariants;
+    sourceType: "photo" | "url" | "text";
+    sourceText: string | null;
+    sourceContext: string | null;
+  };
+
+  if (!parsed || !Array.isArray(parsed.variants) || parsed.variants.length === 0) {
+    return res.status(400).json({ error: "Invalid parsed recipe with variants" });
+  }
+
+  const ids = createRecipeWithPortionVariants(parsed, sourceType, sourceText, sourceContext);
+
+  // Return the parent recipe with all details
+  const recipe = getRecipeById(ids[0]);
+  res.status(201).json({ recipe, allIds: ids });
 });
 
 // PUT /api/recipes/:id - Update recipe
