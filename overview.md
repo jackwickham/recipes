@@ -95,6 +95,7 @@ Set the `SECRETS_FILE` environment variable to specify a custom path (defaults t
 3. **Synchronous SQLite** - Simpler code, adequate for single-user scenario
 4. **No photo storage** - Photos processed by vision LLM, only extracted text stored
 5. **Client-side filtering** - All recipes loaded at once, filtered in browser
+6. **Local Storage for User State** - Chat history and cooking lists are stored in the browser, keeping the backend stateless and simple
 
 ---
 
@@ -147,8 +148,7 @@ POST   /api/import/text          # Import from pasted text
 ### Chat
 
 ```
-GET    /api/recipes/:id/chat     # Get chat history
-POST   /api/recipes/:id/chat     # Send message, get response
+POST   /api/recipes/:id/chat     # Send message with history, get response
 ```
 
 ### Tags
@@ -232,6 +232,6 @@ CREATE TABLE recipes (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Ingredients, steps, tags, and chat_messages tables
+-- Ingredients, steps, and tags tables
 -- See backend/src/db/schema.sql for full schema
 ```
