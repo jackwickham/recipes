@@ -52,6 +52,10 @@ export function RecipeDetail({ id }: Props) {
   );
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [chatInitialMessage, setChatInitialMessage] = useState<
+    string | undefined
+  >(undefined);
+  const [chatAutoSend, setChatAutoSend] = useState(false);
 
   const { timers, startTimer, stopTimer, resetTimer, getTimer } = useTimer();
   const wakeLock = useWakeLock();
@@ -106,11 +110,38 @@ export function RecipeDetail({ id }: Props) {
   );
 
   function handlePortionChange(servings: number) {
-    const parentId = recipe?.parentRecipeId || recipe?.id;
-    route(`/recipe/${parentId}?servings=${servings}`);
+    // Only route to parent if this is specifically a portion variant.
+    // Content variants should act as the "base" for their own portion variants.
+    const baseId =
+      recipe?.variantType === "portion" && recipe.parentRecipeId
+        ? recipe.parentRecipeId
+        : recipe?.id;
+
+    if (baseId) {
+      route(`/recipe/${baseId}?servings=${servings}`);
+    }
   }
 
   function handleRequestNewPortion() {
+    if (!recipe) return;
+
+    // Prompt user for number of portions
+    const portionsStr = window.prompt(
+      "How many portions would you like to create?",
+      "4"
+    );
+
+    if (!portionsStr) return; // User cancelled
+
+    const portions = parseInt(portionsStr, 10);
+    if (isNaN(portions) || portions <= 0) {
+      alert("Please enter a valid number of portions");
+      return;
+    }
+
+    // Set up chat with initial message and auto-send
+    setChatInitialMessage(`Create a version for ${portions} portions`);
+    setChatAutoSend(true);
     setShowChat(true);
   }
 
@@ -517,10 +548,17 @@ export function RecipeDetail({ id }: Props) {
         recipeId={recipe.id}
         recipeTitle={recipe.title}
         isOpen={showChat}
-        onClose={() => setShowChat(false)}
+        onClose={() => {
+          setShowChat(false);
+          setChatInitialMessage(undefined);
+          setChatAutoSend(false);
+        }}
         onSaveAsNew={handleSaveAsNew}
         onSaveAsVariant={handleSaveAsVariant}
         onReplaceRecipe={handleReplaceRecipe}
+        initialMessage={chatInitialMessage}
+        autoSendInitial={chatAutoSend}
+        autoSavePortionVariants={chatAutoSend}
       />
     </div>
   );

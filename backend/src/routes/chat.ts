@@ -239,6 +239,14 @@ function parseChatResponse(response: string): {
       recipes = [parsed.updatedRecipe];
     }
 
+    // Normalize steps to ensure they're objects with instruction fields
+    recipes = recipes.map(recipe => ({
+      ...recipe,
+      steps: recipe.steps.map(step =>
+        typeof step === 'string' ? { instruction: step } : step
+      )
+    }));
+
     return {
       text: parsed.message || response,
       updatedRecipes: recipes,
