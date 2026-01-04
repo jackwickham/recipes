@@ -14,6 +14,7 @@ import { PortionPicker } from "../components/PortionPicker";
 import { Timer } from "../components/Timer";
 import { ChatModal } from "../components/ChatModal";
 import { RecipePreviewModal } from "../components/RecipePreviewModal";
+import { PortionInputModal } from "../components/PortionInputModal";
 import { useTimer } from "../hooks/useTimer";
 import { useWakeLock } from "../hooks/useWakeLock";
 import { useCookingList } from "../hooks/useCookingList";
@@ -61,6 +62,7 @@ export function RecipeDetail({ id }: Props) {
 
   // Scaling state
   const [scalingLoading, setScalingLoading] = useState(false);
+  const [showPortionInput, setShowPortionInput] = useState(false);
   const [showScalePreview, setShowScalePreview] = useState(false);
   const [scaledRecipe, setScaledRecipe] = useState<ParsedRecipe | null>(null);
 
@@ -131,20 +133,12 @@ export function RecipeDetail({ id }: Props) {
 
   async function handleRequestNewPortion() {
     if (!recipe) return;
+    setShowPortionInput(true);
+  }
 
-    // Prompt user for number of portions
-    const portionsStr = window.prompt(
-      "How many portions would you like to create?",
-      "4"
-    );
-
-    if (!portionsStr) return; // User cancelled
-
-    const portions = parseInt(portionsStr, 10);
-    if (isNaN(portions) || portions <= 0) {
-      alert("Please enter a valid number of portions");
-      return;
-    }
+  async function handlePortionSubmit(portions: number) {
+    if (!recipe) return;
+    setShowPortionInput(false);
 
     try {
       setScalingLoading(true);
@@ -607,6 +601,13 @@ export function RecipeDetail({ id }: Props) {
           title={`Scale to ${scaledRecipe.servings} portions`}
         />
       )}
+
+      <PortionInputModal
+        isOpen={showPortionInput}
+        onClose={() => setShowPortionInput(false)}
+        onSubmit={handlePortionSubmit}
+        initialValue={recipe.servings || 4}
+      />
 
       {scalingLoading && (
         <div class="confirm-overlay">
