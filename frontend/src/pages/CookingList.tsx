@@ -2,7 +2,6 @@ import { useEffect, useState, useMemo } from "preact/hooks";
 import type { RecipeWithDetails } from "@recipes/shared";
 import { getRecipe } from "../api/client";
 import { useCookingList } from "../hooks/useCookingList";
-import { formatQuantity } from "../utils/scaling";
 
 export function CookingList({ path }: { path?: string }) {
   const { items, removeRecipe, clearList } = useCookingList();
@@ -178,7 +177,7 @@ export function CookingList({ path }: { path?: string }) {
                       <input type="checkbox" class="ingredient-checkbox" />
                       <span class="ingredient-quantity">
                         {item.quantity > 0
-                          ? formatQuantity(item.quantity, item.unit)
+                          ? `${item.quantity.toString().replace(/\.0$/, "")}${item.unit || ""}`
                           : ""}
                       </span>
                       <span class="ingredient-name">{item.name}</span>
