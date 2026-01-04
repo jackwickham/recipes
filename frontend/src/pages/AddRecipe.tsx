@@ -3,14 +3,20 @@ import { route } from "preact-router";
 import { RecipeForm } from "../components/RecipeForm";
 import {
   createRecipe,
+  createRecipeWithVariants,
   importFromUrl,
   importFromPhotos,
   importFromText,
   type ImportResult,
 } from "../api/client";
-import type { CreateRecipeInput, ParsedRecipe } from "@recipes/shared";
+import type {
+  CreateRecipeInput,
+  ParsedRecipe,
+  ParsedRecipeWithVariants,
+} from "@recipes/shared";
+import { hasVariants } from "@recipes/shared";
 
-type Mode = "choose" | "manual" | "photo" | "url" | "text" | "review";
+type Mode = "choose" | "manual" | "photo" | "url" | "text" | "review" | "saving-variants";
 
 interface ImportState {
   sourceType: "photo" | "url" | "text";
@@ -40,6 +46,41 @@ export function AddRecipe({ path }: { path?: string }) {
     route(`/recipe/${recipe.id}`);
   }
 
+  async function handleSaveVariants(
+    result: ImportResult,
+    parsed: ParsedRecipeWithVariants
+  ) {
+    setMode("saving-variants");
+    try {
+      const { recipe } = await createRecipeWithVariants(
+        parsed,
+        result.sourceType,
+        result.sourceText,
+        result.sourceContext
+      );
+      route(`/recipe/${recipe.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save variants");
+      setMode("choose");
+    }
+  }
+
+  function handleImportResult(result: ImportResult) {
+    if (hasVariants(result.recipe)) {
+      // Auto-save variants without review
+      handleSaveVariants(result, result.recipe);
+    } else {
+      // Single recipe - show review form
+      setImportState({
+        sourceType: result.sourceType,
+        sourceText: result.sourceText,
+        sourceContext: result.sourceContext,
+        recipe: result.recipe,
+      });
+      setMode("review");
+    }
+  }
+
   async function handleImportFromUrl() {
     if (!urlInput.trim()) {
       setError("Please enter a URL");
@@ -50,8 +91,7 @@ export function AddRecipe({ path }: { path?: string }) {
       setLoading(true);
       setError(null);
       const result = await importFromUrl(urlInput.trim());
-      setImportState(result);
-      setMode("review");
+      handleImportResult(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to import from URL");
     } finally {
@@ -69,8 +109,7 @@ export function AddRecipe({ path }: { path?: string }) {
       setLoading(true);
       setError(null);
       const result = await importFromText(textInput.trim());
-      setImportState(result);
-      setMode("review");
+      handleImportResult(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to parse text");
     } finally {
@@ -121,8 +160,7 @@ export function AddRecipe({ path }: { path?: string }) {
       setLoading(true);
       setError(null);
       const result = await importFromPhotos(photos);
-      setImportState(result);
-      setMode("review");
+      handleImportResult(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to extract from photos");
     } finally {

@@ -1,5 +1,7 @@
 // Core types
 
+export type VariantType = "portion" | "content";
+
 export interface Recipe {
   id: number;
   title: string;
@@ -12,6 +14,7 @@ export interface Recipe {
   sourceText: string | null;
   sourceContext: string | null;
   parentRecipeId: number | null;
+  variantType: VariantType | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -46,12 +49,19 @@ export interface RecipeRef {
   title: string;
 }
 
+// Portion variant reference (just servings and id for picker)
+export interface PortionVariantRef {
+  id: number;
+  servings: number;
+}
+
 // Full recipe with relations
 export interface RecipeWithDetails extends Recipe {
   ingredients: Ingredient[];
   steps: Step[];
   tags: Tag[];
-  variants?: Recipe[];
+  portionVariants?: PortionVariantRef[]; // Other portion sizes available
+  contentVariants?: Recipe[]; // Different versions (e.g., vegetarian)
   parentRecipe?: RecipeRef;
 }
 
@@ -84,6 +94,7 @@ export interface CreateRecipeInput {
   sourceText?: string | null;
   sourceContext?: string | null;
   parentRecipeId?: number | null;
+  variantType?: VariantType | null;
   ingredients?: IngredientInput[];
   steps?: StepInput[];
   tags?: TagInput[];
@@ -99,6 +110,35 @@ export interface ParsedRecipe {
   ingredients: IngredientInput[];
   steps: StepInput[];
   suggestedTags: string[];
+  parentRecipeId?: number | null; // For chat-generated variants
+  variantType?: VariantType | null; // For chat-generated portion variants
+}
+
+// Single portion variant from parser (shares title/description/tags with siblings)
+export interface ParsedPortionVariant {
+  servings: number;
+  prepTimeMinutes: number | null;
+  cookTimeMinutes: number | null;
+  ingredients: IngredientInput[];
+  steps: StepInput[];
+}
+
+// Multi-variant parser output when recipe has multiple portion sizes
+export interface ParsedRecipeWithVariants {
+  title: string;
+  description: string | null;
+  suggestedTags: string[];
+  variants: ParsedPortionVariant[];
+}
+
+// Union type for parser output
+export type ParsedRecipeResult = ParsedRecipe | ParsedRecipeWithVariants;
+
+// Type guard to check if result has variants
+export function hasVariants(
+  result: ParsedRecipeResult
+): result is ParsedRecipeWithVariants {
+  return "variants" in result && Array.isArray(result.variants);
 }
 
 // Chat types

@@ -14,6 +14,9 @@ interface Props {
   onSaveAsNew: (recipe: ParsedRecipe) => void;
   onSaveAsVariant: (recipe: ParsedRecipe) => void;
   onReplaceRecipe: (recipe: ParsedRecipe) => void;
+  initialMessage?: string; // Pre-fill input with this message
+  autoSendInitial?: boolean; // Auto-send the initial message
+  autoSavePortionVariants?: boolean; // Auto-save portion variants when received
 }
 
 const SUGGESTION_PROMPTS = [
@@ -32,6 +35,9 @@ export function ChatModal({
   onSaveAsNew,
   onSaveAsVariant,
   onReplaceRecipe,
+  initialMessage,
+  autoSendInitial,
+  autoSavePortionVariants,
 }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -40,12 +46,26 @@ export function ChatModal({
   const [pendingRecipes, setPendingRecipes] = useState<ParsedRecipe[]>([]);
   const [showPreviewIdx, setShowPreviewIdx] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const hasAutoSentRef = useRef(false);
 
   useEffect(() => {
     if (isOpen) {
       loadHistory();
+      // Set initial message when opening
+      if (initialMessage) {
+        setInput(initialMessage);
+        // Auto-send if requested (only once)
+        if (autoSendInitial && !hasAutoSentRef.current) {
+          hasAutoSentRef.current = true;
+          // Small delay to ensure UI is ready
+          setTimeout(() => handleSend(initialMessage), 100);
+        }
+      }
+    } else {
+      // Reset when closing
+      hasAutoSentRef.current = false;
     }
-  }, [isOpen, recipeId]);
+  }, [isOpen, recipeId, initialMessage]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -133,6 +153,15 @@ export function ChatModal({
       // Store pending recipes if returned
       if (response.updatedRecipes.length > 0) {
         setPendingRecipes(response.updatedRecipes);
+
+        // Auto-save portion variants if requested
+        if (autoSavePortionVariants) {
+          response.updatedRecipes.forEach((recipe) => {
+            if (recipe.variantType === "portion") {
+              onSaveAsVariant(recipe);
+            }
+          });
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send message");
@@ -293,9 +322,11 @@ export function ChatModal({
                       <div class="chat-recipe-section">
                         <h4>Method</h4>
                         <ol>
-                          {recipe.steps.map((step, i) => (
-                            <li key={i}>{renderStepText(step.instruction, 1)}</li>
-                          ))}
+                          {recipe.steps.map((step, i) => {
+                            // Handle both string format and object format
+                            const instruction = typeof step === 'string' ? step : step.instruction;
+                            return <li key={i}>{renderStepText(instruction)}</li>;
+                          })}
                         </ol>
                       </div>
                     )}

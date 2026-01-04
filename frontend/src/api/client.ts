@@ -2,13 +2,15 @@ import type {
   RecipeWithDetails,
   CreateRecipeInput,
   ParsedRecipe,
+  ParsedRecipeResult,
+  ParsedRecipeWithVariants,
 } from "@recipes/shared";
 
 export interface ImportResult {
   sourceType: "photo" | "url" | "text";
   sourceText: string;
   sourceContext: string | null;
-  recipe: ParsedRecipe;
+  recipe: ParsedRecipeResult;
 }
 
 const API_BASE = "/api";
@@ -103,6 +105,33 @@ export async function generateRecipe(prompt: string): Promise<ImportResult> {
   return request<ImportResult>("/import/generate", {
     method: "POST",
     body: JSON.stringify({ prompt }),
+  });
+}
+
+export interface CreateWithVariantsResult {
+  recipe: RecipeWithDetails;
+  allIds: number[];
+}
+
+export async function createRecipeWithVariants(
+  parsed: ParsedRecipeWithVariants,
+  sourceType: "photo" | "url" | "text",
+  sourceText: string | null,
+  sourceContext: string | null
+): Promise<CreateWithVariantsResult> {
+  return request<CreateWithVariantsResult>("/recipes/with-variants", {
+    method: "POST",
+    body: JSON.stringify({ parsed, sourceType, sourceText, sourceContext }),
+  });
+}
+
+export async function scaleRecipe(
+  id: number,
+  targetServings: number
+): Promise<ParsedRecipe> {
+  return request<ParsedRecipe>(`/recipes/${id}/scale`, {
+    method: "POST",
+    body: JSON.stringify({ targetServings }),
   });
 }
 

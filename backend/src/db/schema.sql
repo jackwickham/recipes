@@ -15,6 +15,10 @@ CREATE TABLE IF NOT EXISTS recipes (
 
     -- Variant relationship
     parent_recipe_id INTEGER REFERENCES recipes(id) ON DELETE SET NULL,
+    -- 'portion' = same recipe, different serving size
+    -- 'content' = different ingredients/method (e.g., vegetarian version)
+    -- NULL = standalone recipe (not a variant)
+    variant_type TEXT CHECK(variant_type IN ('portion', 'content')),
 
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP

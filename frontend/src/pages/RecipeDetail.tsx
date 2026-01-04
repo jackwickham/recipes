@@ -8,15 +8,17 @@ import {
   deleteRecipe,
   createRecipe,
   updateRecipe,
+  scaleRecipe,
 } from "../api/client";
-import { ScalingControls } from "../components/ScalingControls";
+import { PortionPicker } from "../components/PortionPicker";
 import { Timer } from "../components/Timer";
 import { ChatModal } from "../components/ChatModal";
+import { RecipePreviewModal } from "../components/RecipePreviewModal";
+import { PortionInputModal } from "../components/PortionInputModal";
 import { useTimer } from "../hooks/useTimer";
 import { useWakeLock } from "../hooks/useWakeLock";
 import { useCookingList } from "../hooks/useCookingList";
 import {
-  formatQuantity,
   renderStepText,
   extractTimers,
 } from "../utils/scaling";
@@ -52,25 +54,56 @@ export function RecipeDetail({ id }: Props) {
   );
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showChat, setShowChat] = useState(false);
-  const [currentServings, setCurrentServings] = useState<number>(1);
+  const [chatInitialMessage, setChatInitialMessage] = useState<
+    string | undefined
+  >(undefined);
+  const [chatAutoSend, setChatAutoSend] = useState(false);
+
+  // Scaling state
+  const [scalingLoading, setScalingLoading] = useState(false);
+  const [showPortionInput, setShowPortionInput] = useState(false);
+  const [showScalePreview, setShowScalePreview] = useState(false);
+  const [scaledRecipe, setScaledRecipe] = useState<ParsedRecipe | null>(null);
 
   const { timers, startTimer, stopTimer, resetTimer, getTimer } = useTimer();
   const wakeLock = useWakeLock();
   const cookingList = useCookingList();
 
   useEffect(() => {
-    if (id) {
-      loadRecipe(parseInt(id, 10));
-    }
-  }, [id]);
+    loadRecipe();
+  }, [id, window.location.search]); // Re-run when query params change
 
-  async function loadRecipe(recipeId: number) {
+  async function loadRecipe() {
+    if (!id) return;
+
     try {
       setLoading(true);
       setError(null);
-      const data = await getRecipe(recipeId);
+      const data = await getRecipe(parseInt(id, 10));
+
+      // Check if user requested a specific portion via query param
+      const urlParams = new URLSearchParams(window.location.search);
+      const servingsParam = urlParams.get('servings');
+      const requestedServings = servingsParam ? parseInt(servingsParam, 10) : null;
+
+      // If servings requested and variant exists, load that variant instead
+      if (requestedServings && data.portionVariants) {
+        const variant = data.portionVariants.find(v => v.servings === requestedServings);
+        if (variant && variant.id !== data.id) {
+          const variantData = await getRecipe(variant.id);
+
+          // IMPORTANT: Inherit contentVariants from parent to show consistent variants
+          // across all portion sizes
+          variantData.contentVariants = data.contentVariants;
+
+          setRecipe(variantData);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Otherwise load the parent recipe as-is
       setRecipe(data);
-      setCurrentServings(data.servings || 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load recipe");
     } finally {
@@ -78,14 +111,45 @@ export function RecipeDetail({ id }: Props) {
     }
   }
 
-  const baseServings = recipe?.servings || 1;
-  const scale = currentServings / baseServings;
-
-  // Shuffle variants once when recipe loads
-  const shuffledVariants = useMemo(
-    () => (recipe?.variants ? shuffleArray(recipe.variants) : []),
-    [recipe?.variants]
+  // Shuffle content variants once when recipe loads
+  const shuffledContentVariants = useMemo(
+    () => (recipe?.contentVariants ? shuffleArray(recipe.contentVariants) : []),
+    [recipe?.contentVariants]
   );
+
+  function handlePortionChange(servings: number) {
+    // Only route to parent if this is specifically a portion variant.
+    // Content variants should act as the "base" for their own portion variants.
+    const baseId =
+      recipe?.variantType === "portion" && recipe.parentRecipeId
+        ? recipe.parentRecipeId
+        : recipe?.id;
+
+    if (baseId) {
+      route(`/recipe/${baseId}?servings=${servings}`);
+    }
+  }
+
+  async function handleRequestNewPortion() {
+    if (!recipe) return;
+    setShowPortionInput(true);
+  }
+
+  async function handlePortionSubmit(portions: number) {
+    if (!recipe) return;
+    setShowPortionInput(false);
+
+    try {
+      setScalingLoading(true);
+      const scaled = await scaleRecipe(recipe.id, portions);
+      setScaledRecipe(scaled);
+      setShowScalePreview(true);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to scale recipe");
+    } finally {
+      setScalingLoading(false);
+    }
+  }
 
   async function handleRatingChange(rating: "meh" | "good" | "great" | null) {
     if (!recipe) return;
@@ -120,6 +184,17 @@ export function RecipeDetail({ id }: Props) {
     }
   }
 
+  function closeChat() {
+    setShowChat(false);
+    setChatInitialMessage(undefined);
+    setChatAutoSend(false);
+  }
+
+  function closePreview() {
+    setShowScalePreview(false);
+    setScaledRecipe(null);
+  }
+
   async function handleSaveAsNew(parsed: ParsedRecipe) {
     try {
       const newRecipe = await createRecipe({
@@ -133,12 +208,13 @@ export function RecipeDetail({ id }: Props) {
         sourceContext: recipe ? `Modified from: ${recipe.title}` : null,
         ingredients: parsed.ingredients,
         steps: parsed.steps,
-        tags: parsed.suggestedTags.map((tag) => ({
+        tags: (parsed.suggestedTags || []).map((tag) => ({
           tag,
           isAutoGenerated: true,
         })),
       });
-      setShowChat(false);
+      closeChat();
+      closePreview();
       route(`/recipe/${newRecipe.id}`);
     } catch (err) {
       console.error("Failed to save recipe:", err);
@@ -147,6 +223,23 @@ export function RecipeDetail({ id }: Props) {
 
   async function handleSaveAsVariant(parsed: ParsedRecipe) {
     if (!recipe) return;
+
+    // Calculate the Base ID (the root of the portion variant tree)
+    // If current recipe is a portion variant, its parent is the base.
+    // If current recipe is base or content variant, it IS the base.
+    const baseId =
+      recipe.variantType === "portion" && recipe.parentRecipeId
+        ? recipe.parentRecipeId
+        : recipe.id;
+
+    // Determine the target parent ID
+    // If creating a PORTION variant, force it to attach to the base ID
+    // Otherwise (e.g. content variant), respect LLM's choice or default to baseId
+    const finalParentId =
+      parsed.variantType === "portion"
+        ? baseId
+        : parsed.parentRecipeId ?? baseId;
+
     try {
       const newRecipe = await createRecipe({
         title: parsed.title,
@@ -157,16 +250,25 @@ export function RecipeDetail({ id }: Props) {
         sourceType: "text",
         sourceText: null,
         sourceContext: `Variant of: ${recipe.title}`,
-        parentRecipeId: recipe.id,
+        parentRecipeId: finalParentId,
+        variantType: parsed.variantType ?? null,
         ingredients: parsed.ingredients,
         steps: parsed.steps,
-        tags: parsed.suggestedTags.map((tag) => ({
+        tags: (parsed.suggestedTags || []).map((tag) => ({
           tag,
           isAutoGenerated: true,
         })),
       });
-      setShowChat(false);
-      route(`/recipe/${newRecipe.id}`);
+      closeChat();
+      closePreview();
+
+      // Navigate to parent with servings query param if it's a portion variant
+      if (newRecipe.variantType === "portion") {
+        route(`/recipe/${baseId}?servings=${newRecipe.servings}`);
+      } else {
+        // Content variant - navigate to its own ID
+        route(`/recipe/${newRecipe.id}`);
+      }
     } catch (err) {
       console.error("Failed to save variant:", err);
     }
@@ -183,13 +285,14 @@ export function RecipeDetail({ id }: Props) {
         cookTimeMinutes: parsed.cookTimeMinutes,
         ingredients: parsed.ingredients,
         steps: parsed.steps,
-        tags: parsed.suggestedTags.map((tag) => ({
+        tags: (parsed.suggestedTags || []).map((tag) => ({
           tag,
           isAutoGenerated: true,
         })),
       });
-      setShowChat(false);
-      loadRecipe(recipe.id);
+      closeChat();
+      closePreview();
+      loadRecipe();
     } catch (err) {
       console.error("Failed to update recipe:", err);
     }
@@ -260,7 +363,7 @@ export function RecipeDetail({ id }: Props) {
       </header>
 
       <main>
-        {recipe.parentRecipe && (
+        {recipe.parentRecipe && recipe.variantType !== 'portion' && (
           <a href={`/recipe/${recipe.parentRecipe.id}`} class="parent-recipe-link">
             ← Variant of: {recipe.parentRecipe.title}
           </a>
@@ -327,9 +430,7 @@ export function RecipeDetail({ id }: Props) {
           ) : (
             <button
               class="btn btn-primary"
-              onClick={() =>
-                cookingList.addRecipe(recipe.id, recipe.title, currentServings)
-              }
+              onClick={() => cookingList.addRecipe(recipe.id, recipe.title)}
             >
               Add to List
             </button>
@@ -350,11 +451,21 @@ export function RecipeDetail({ id }: Props) {
           </div>
         )}
 
-        {shuffledVariants.length > 0 && (
+        {/* Portion Picker for recipes with portion variants */}
+        <PortionPicker
+          currentServings={recipe.servings || 1}
+          portionVariants={recipe.portionVariants || []}
+          parentRecipeId={recipe.parentRecipeId || recipe.id}
+          onPortionChange={handlePortionChange}
+          onRequestNewPortion={handleRequestNewPortion}
+        />
+
+        {/* Content variants (different recipes, not just different portions) */}
+        {shuffledContentVariants.length > 0 && (
           <div class="variants-section">
-            <h3 class="variants-title">Variants</h3>
+            <h3 class="variants-title">Also try</h3>
             <div class="variants-carousel">
-              {shuffledVariants.map((v) => (
+              {shuffledContentVariants.map((v) => (
                 <a key={v.id} href={`/recipe/${v.id}`} class="variant-card">
                   <div class="variant-card-content">
                     <span class="variant-card-title">{v.title}</span>
@@ -368,14 +479,6 @@ export function RecipeDetail({ id }: Props) {
               ))}
             </div>
           </div>
-        )}
-
-        {recipe.servings && (
-          <ScalingControls
-            baseServings={baseServings}
-            currentServings={currentServings}
-            onServingsChange={setCurrentServings}
-          />
         )}
 
         {recipe.ingredients.length > 0 && (
@@ -392,7 +495,7 @@ export function RecipeDetail({ id }: Props) {
                   />
                   <span class="ingredient-quantity">
                     {ing.quantity !== null
-                      ? formatQuantity(ing.quantity, ing.unit, scale)
+                      ? `${ing.quantity.toString().replace(/\.0$/, "")}${ing.unit || ""}`
                       : ""}
                   </span>
                   <span class="ingredient-name">{ing.name}</span>
@@ -411,7 +514,7 @@ export function RecipeDetail({ id }: Props) {
             <ol class="step-list">
               {recipe.steps.map((step, idx) => {
                 const stepTimers = extractTimers(step.instruction);
-                const renderedText = renderStepText(step.instruction, scale);
+                const renderedText = renderStepText(step.instruction);
 
                 return (
                   <li key={step.id} class="step-item">
@@ -479,11 +582,39 @@ export function RecipeDetail({ id }: Props) {
         recipeId={recipe.id}
         recipeTitle={recipe.title}
         isOpen={showChat}
-        onClose={() => setShowChat(false)}
+        onClose={closeChat}
         onSaveAsNew={handleSaveAsNew}
         onSaveAsVariant={handleSaveAsVariant}
         onReplaceRecipe={handleReplaceRecipe}
+        initialMessage={chatInitialMessage}
+        autoSendInitial={chatAutoSend}
+        autoSavePortionVariants={chatAutoSend}
       />
+
+      {scaledRecipe && (
+        <RecipePreviewModal
+          recipe={scaledRecipe}
+          isOpen={showScalePreview}
+          onClose={closePreview}
+          onSave={handleSaveAsVariant}
+          title={`Scale to ${scaledRecipe.servings} portions`}
+        />
+      )}
+
+      <PortionInputModal
+        isOpen={showPortionInput}
+        onClose={() => setShowPortionInput(false)}
+        onSubmit={handlePortionSubmit}
+        initialValue={recipe.servings || 4}
+      />
+
+      {scalingLoading && (
+        <div class="confirm-overlay">
+          <div class="confirm-dialog">
+            <p class="loading">Scaling recipe...</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
