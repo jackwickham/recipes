@@ -3,16 +3,16 @@ import type { PortionVariantRef } from "@recipes/shared";
 interface Props {
   currentServings: number;
   portionVariants: PortionVariantRef[];
-  currentRecipeId: number;
-  onNavigateToVariant: (recipeId: number) => void;
+  parentRecipeId: number;
+  onPortionChange: (servings: number) => void;
   onRequestNewPortion?: () => void;
 }
 
 export function PortionPicker({
   currentServings,
   portionVariants,
-  currentRecipeId,
-  onNavigateToVariant,
+  parentRecipeId,
+  onPortionChange,
   onRequestNewPortion,
 }: Props) {
   // If no variants, don't render anything
@@ -43,9 +43,9 @@ export function PortionPicker({
     (a, b) => a.servings - b.servings
   );
 
-  // Check if current recipe is in the variants list
+  // Check if current servings is in the variants list
   const currentInVariants = sortedVariants.some(
-    (v) => v.id === currentRecipeId
+    (v) => v.servings === currentServings
   );
 
   // Build the list of portions to show
@@ -53,7 +53,7 @@ export function PortionPicker({
   const allPortions = currentInVariants
     ? sortedVariants
     : [
-        { id: currentRecipeId, servings: currentServings },
+        { id: parentRecipeId, servings: currentServings },
         ...sortedVariants,
       ].sort((a, b) => a.servings - b.servings);
 
@@ -64,13 +64,9 @@ export function PortionPicker({
         {allPortions.map((variant) => (
           <button
             key={variant.id}
-            class={`portion-btn ${variant.id === currentRecipeId ? "active" : ""}`}
-            onClick={() => {
-              if (variant.id !== currentRecipeId) {
-                onNavigateToVariant(variant.id);
-              }
-            }}
-            disabled={variant.id === currentRecipeId}
+            class={`portion-btn ${variant.servings === currentServings ? "active" : ""}`}
+            onClick={() => onPortionChange(variant.servings)}
+            disabled={variant.servings === currentServings}
           >
             {variant.servings}
           </button>

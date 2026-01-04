@@ -112,7 +112,7 @@ Beat {{qty:3:}} eggs             → "Beat 3 eggs" (no unit for countable items)
 Pour in {{qty:200:ml}} milk      → "Pour in 200ml milk"
 ```
 
-**Note**: Quantity markers are stored with exact values per portion variant. When a recipe has multiple portion sizes (e.g., 2, 4, 6 servings), each variant stores the precise quantities for that serving size. Switching portions navigates to the corresponding variant recipe.
+**Note**: Quantity markers are stored with exact values per portion variant. When a recipe has multiple portion sizes (e.g., 2, 4, 6 servings), each variant stores the precise quantities for that serving size. Switching portions updates the URL with a query parameter (`?servings=N`) to show the selected portion.
 
 ### Timer Markers
 

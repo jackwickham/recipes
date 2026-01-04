@@ -52,7 +52,7 @@ Generation: `backend/src/services/recipe-parser.ts` (LLM prompt)
 
 ## Portion Variants
 
-When a recipe source provides exact quantities for multiple serving sizes (e.g., 2, 3, 4 portions), all variants are extracted and stored as separate linked recipes with `variant_type='portion'`. Users can switch between portions using the PortionPicker UI or request new portion sizes via LLM chat. Each variant has exact quantities—no client-side scaling.
+When a recipe source provides exact quantities for multiple serving sizes (e.g., 2, 3, 4 portions), all variants are extracted and stored as separate linked recipes with `variant_type='portion'`. Users can switch between portions using the PortionPicker UI, which updates the URL with a query parameter (`/recipe/{id}?servings={N}`). New portion sizes can be requested via LLM chat. Each variant has exact quantities—no client-side scaling.
 
 ## Configuration
 

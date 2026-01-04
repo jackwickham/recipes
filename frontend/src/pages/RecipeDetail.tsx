@@ -58,16 +58,39 @@ export function RecipeDetail({ id }: Props) {
   const cookingList = useCookingList();
 
   useEffect(() => {
-    if (id) {
-      loadRecipe(parseInt(id, 10));
-    }
-  }, [id]);
+    loadRecipe();
+  }, [id, window.location.search]); // Re-run when query params change
 
-  async function loadRecipe(recipeId: number) {
+  async function loadRecipe() {
+    if (!id) return;
+
     try {
       setLoading(true);
       setError(null);
-      const data = await getRecipe(recipeId);
+      const data = await getRecipe(parseInt(id, 10));
+
+      // Check if user requested a specific portion via query param
+      const urlParams = new URLSearchParams(window.location.search);
+      const servingsParam = urlParams.get('servings');
+      const requestedServings = servingsParam ? parseInt(servingsParam, 10) : null;
+
+      // If servings requested and variant exists, load that variant instead
+      if (requestedServings && data.portionVariants) {
+        const variant = data.portionVariants.find(v => v.servings === requestedServings);
+        if (variant && variant.id !== data.id) {
+          const variantData = await getRecipe(variant.id);
+
+          // IMPORTANT: Inherit contentVariants from parent to show consistent variants
+          // across all portion sizes
+          variantData.contentVariants = data.contentVariants;
+
+          setRecipe(variantData);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Otherwise load the parent recipe as-is
       setRecipe(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load recipe");
@@ -82,8 +105,9 @@ export function RecipeDetail({ id }: Props) {
     [recipe?.contentVariants]
   );
 
-  function handleNavigateToVariant(variantId: number) {
-    route(`/recipe/${variantId}`);
+  function handlePortionChange(servings: number) {
+    const parentId = recipe?.parentRecipeId || recipe?.id;
+    route(`/recipe/${parentId}?servings=${servings}`);
   }
 
   function handleRequestNewPortion() {
@@ -150,6 +174,9 @@ export function RecipeDetail({ id }: Props) {
 
   async function handleSaveAsVariant(parsed: ParsedRecipe) {
     if (!recipe) return;
+
+    const parentId = recipe.parentRecipeId || recipe.id;
+
     try {
       const newRecipe = await createRecipe({
         title: parsed.title,
@@ -160,7 +187,7 @@ export function RecipeDetail({ id }: Props) {
         sourceType: "text",
         sourceText: null,
         sourceContext: `Variant of: ${recipe.title}`,
-        parentRecipeId: parsed.parentRecipeId ?? recipe.id,
+        parentRecipeId: parsed.parentRecipeId ?? parentId,
         variantType: parsed.variantType ?? null,
         ingredients: parsed.ingredients,
         steps: parsed.steps,
@@ -170,7 +197,14 @@ export function RecipeDetail({ id }: Props) {
         })),
       });
       setShowChat(false);
-      route(`/recipe/${newRecipe.id}`);
+
+      // Navigate to parent with servings query param if it's a portion variant
+      if (newRecipe.variantType === 'portion') {
+        route(`/recipe/${parentId}?servings=${newRecipe.servings}`);
+      } else {
+        // Content variant - navigate to its own ID
+        route(`/recipe/${newRecipe.id}`);
+      }
     } catch (err) {
       console.error("Failed to save variant:", err);
     }
@@ -193,7 +227,7 @@ export function RecipeDetail({ id }: Props) {
         })),
       });
       setShowChat(false);
-      loadRecipe(recipe.id);
+      loadRecipe();
     } catch (err) {
       console.error("Failed to update recipe:", err);
     }
@@ -264,7 +298,7 @@ export function RecipeDetail({ id }: Props) {
       </header>
 
       <main>
-        {recipe.parentRecipe && (
+        {recipe.parentRecipe && recipe.variantType !== 'portion' && (
           <a href={`/recipe/${recipe.parentRecipe.id}`} class="parent-recipe-link">
             ← Variant of: {recipe.parentRecipe.title}
           </a>
@@ -356,8 +390,8 @@ export function RecipeDetail({ id }: Props) {
         <PortionPicker
           currentServings={recipe.servings || 1}
           portionVariants={recipe.portionVariants || []}
-          currentRecipeId={recipe.id}
-          onNavigateToVariant={handleNavigateToVariant}
+          parentRecipeId={recipe.parentRecipeId || recipe.id}
+          onPortionChange={handlePortionChange}
           onRequestNewPortion={handleRequestNewPortion}
         />
 
