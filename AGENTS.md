@@ -39,6 +39,7 @@ npm run start
 - Database queries are synchronous (better-sqlite3) in `backend/src/db/queries.ts`
 - Frontend state is local component state, no global store
 - Cooking list persisted to localStorage via `useCookingList` hook
+- Chat history persisted to localStorage via `ChatModal` component
 
 ## Recipe Markers
 

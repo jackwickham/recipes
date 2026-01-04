@@ -28,7 +28,7 @@ IMPORTANT RULES:
    - "Pour in {{qty:200:ml}} milk" (200 millilitres)
    - "Add {{qty:2:tsp}} salt" (2 teaspoons)
    - "Beat {{qty:3:}} eggs" (3 eggs, no unit)
-5. Mark timer durations with {{timer:M}} where M is minutes (e.g., {{timer:15}} for 15 minutes)
+5. Mark timer durations with {{timer:M}} where M is minutes (e.g., {{timer:15}} for 15 minutes, {{timer:0.5}} for 30 seconds)
 6. Suggest appropriate tags from: pasta, indian, mexican, asian, mediterranean, british, american, main, side, dessert, snack, breakfast, quick, vegetarian, vegan, one-pot, make-ahead, soup, salad, baking
 7. SPLIT STEPS: Each step should focus on ONE main action. If a step contains multiple unrelated actions, split them into separate steps.
 8. MULTIPLE PORTION SIZES: If the recipe provides quantities for multiple serving sizes (e.g., "For 2 people: 200g flour, For 4 people: 400g flour"), you MUST extract ALL variants using the multi-variant format below.
@@ -103,7 +103,7 @@ IMPORTANT RULES:
 2. Use fan oven temperatures
 3. Use British English ingredient names (aubergine not eggplant, coriander not cilantro, etc.)
 4. In step instructions, embed quantities using {{qty:VALUE:UNIT}} markers
-5. Mark timer durations with {{timer:M}} where M is minutes
+5. Mark timer durations with {{timer:M}} where M is minutes (e.g., {{timer:15}} for 15 minutes, {{timer:0.5}} for 30 seconds)
 6. Create practical, delicious recipes that a home cook can make
 7. Be creative but realistic with ingredients and techniques
 8. Suggest appropriate tags

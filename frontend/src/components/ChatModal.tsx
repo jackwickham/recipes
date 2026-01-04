@@ -1,9 +1,7 @@
 import { useState, useEffect, useRef } from "preact/hooks";
 import type { ParsedRecipe } from "@recipes/shared";
 import {
-  getChatHistory,
   sendChatMessage,
-  clearChatHistory,
   type ChatMessage,
 } from "../api/client";
 import { renderStepText } from "../utils/scaling";
@@ -73,19 +71,36 @@ export function ChatModal({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  async function loadHistory() {
+  function getStorageKey() {
+    return `gemini_chat_${recipeId}`;
+  }
+
+  function loadHistory() {
     try {
-      const history = await getChatHistory(recipeId);
-      setMessages(history);
+      const stored = localStorage.getItem(getStorageKey());
+      if (stored) {
+        setMessages(JSON.parse(stored));
+      } else {
+        setMessages([]);
+      }
     } catch {
       // Ignore history loading errors
+      setMessages([]);
+    }
+  }
+
+  function saveHistory(newMessages: ChatMessage[]) {
+    try {
+      localStorage.setItem(getStorageKey(), JSON.stringify(newMessages));
+    } catch (e) {
+      console.error("Failed to save chat history", e);
     }
   }
 
   async function handleClearChat() {
     if (!confirm("Are you sure you want to clear the chat history?")) return;
     try {
-      await clearChatHistory(recipeId);
+      localStorage.removeItem(getStorageKey());
       setMessages([]);
       setPendingRecipes([]);
       setShowPreviewIdx(null);
@@ -103,28 +118,37 @@ export function ChatModal({
     setPendingRecipes([]);
     setLoading(true);
 
-    // Optimistically add user message
-    setMessages((prev) => [
-      ...prev,
-      { role: "user", content: text, createdAt: new Date().toISOString() },
-    ]);
+    const currentHistory = messages;
+    const userMsg: ChatMessage = {
+      role: "user",
+      content: text,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Optimistically add user message and save
+    const historyWithUser = [...currentHistory, userMsg];
+    setMessages(historyWithUser);
+    saveHistory(historyWithUser);
 
     try {
-      const response = await sendChatMessage(recipeId, text);
+      const response = await sendChatMessage(recipeId, text, currentHistory);
 
-      // Add assistant message
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: response.message,
-          metadata:
-            response.updatedRecipes.length > 0
-              ? JSON.stringify(response.updatedRecipes)
-              : null,
-          createdAt: new Date().toISOString(),
-        },
-      ]);
+      const assistantMsg: ChatMessage = {
+        role: "assistant",
+        content: response.message,
+        metadata:
+          response.updatedRecipes.length > 0
+            ? JSON.stringify(response.updatedRecipes)
+            : null,
+        createdAt: new Date().toISOString(),
+      };
+
+      // Add assistant message and save
+      setMessages((prev) => {
+        const newMessages = [...prev, assistantMsg];
+        saveHistory(newMessages);
+        return newMessages;
+      });
 
       // Store pending recipes if returned
       if (response.updatedRecipes.length > 0) {

@@ -1,5 +1,5 @@
 import type { Timer as TimerType } from "../hooks/useTimer";
-import { formatTime } from "../hooks/useTimer";
+import { formatTime, formatDuration } from "../hooks/useTimer";
 
 interface Props {
   timer: TimerType | undefined;
@@ -11,9 +11,10 @@ interface Props {
 
 export function Timer({ timer, minutes, onStart, onStop, onReset }: Props) {
   if (!timer) {
+    const duration = formatDuration(Math.round(minutes * 60));
     return (
       <button class="timer-start-btn" onClick={onStart}>
-        Start {minutes} min timer
+        Start {duration} timer
       </button>
     );
   }

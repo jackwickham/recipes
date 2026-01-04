@@ -1081,7 +1081,7 @@ body {
 /* Filter bar */
 .filter-bar {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
@@ -1094,10 +1094,11 @@ body {
 
 .filter-bar-left {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 1rem;
   flex: 1;
+  min-width: 0;
 }
 
 .filter-bar-right {
@@ -1115,6 +1116,7 @@ body {
 /* Tags filter with popover */
 .tags-filter-container {
   position: relative;
+  flex-shrink: 0;
 }
 
 .tags-toggle {
@@ -1161,11 +1163,16 @@ body {
 /* Inline selected tags */
 .selected-tags-inline {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0.375rem;
   padding: 0 0.5rem;
   border-left: 1px solid var(--color-border);
   border-right: 1px solid var(--color-border);
+  overflow-x: auto;
+  flex: 0 1 auto;
+  min-width: 0;
+  align-items: center;
+  scrollbar-width: thin;
 }
 
 .selected-tag-mini {
@@ -1193,6 +1200,7 @@ body {
   background: var(--color-bg);
   border-radius: var(--radius);
   padding: 0.125rem;
+  flex-shrink: 0;
 }
 
 .rating-chip {
@@ -1203,6 +1211,7 @@ body {
   font-size: 0.875rem;
   cursor: pointer;
   transition: all 0.15s;
+  white-space: nowrap;
 }
 
 .rating-chip:hover {
@@ -1233,6 +1242,7 @@ body {
   font-size: 0.875rem;
   cursor: pointer;
   transition: all 0.15s;
+  white-space: nowrap;
 }
 
 .filter-chip:hover {
@@ -1720,31 +1730,94 @@ body {
     flex-direction: column;
   }
 
+  /* Improved Filter Bar Layout for Mobile */
   .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
     gap: 0.75rem;
+    padding: 0.75rem;
   }
 
   .filter-bar-left {
     width: 100%;
+    display: flex;
+    flex-wrap: wrap;
     gap: 0.5rem;
-  }
-
-  .filter-bar-right {
-    width: 100%;
-    justify-content: flex-end;
+    align-items: center;
+    min-width: 0;
   }
 
   .filter-group {
     flex-wrap: wrap;
   }
 
+  /* Keep Rating and Tags together on the first line (if they fit) */
+  .rating-filter, 
+  .tags-filter-container {
+    flex: 0 0 auto;
+  }
+
+  /* Force Ingredient Filter to its own full-width row */
   .ingredient-filter {
-    flex: 1;
+    width: 100%;
+    flex: 0 0 100%;
+    order: 4; /* Explicitly last in left section */
     min-width: 0;
+    margin-top: 0.25rem;
+    flex-wrap: nowrap; /* Ensure icon and input stay on same line */
   }
 
   .ingredient-filter-input {
+    flex: 1;
+    width: 0; /* Allow flex to determine width */
+    min-width: 0;
+  }
+
+  .ingredient-filter-icon {
+    flex-shrink: 0;
+  }
+
+  /* Scrollable Selected Tags */
+  .selected-tags-inline {
     width: 100%;
+    flex: 0 0 100%;
+    order: 3; /* Between rating/tags and ingredient filter */
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    border: none;
+    padding: 0.25rem 0;
+    /* Hide scrollbar but allow scrolling */
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+
+    /* Scroll shadow */
+    background: 
+      linear-gradient(to right, var(--color-bg-secondary) 30%, rgba(255,255,255,0)),
+      linear-gradient(to right, rgba(255,255,255,0), var(--color-bg-secondary) 70%) 100% 0,
+      radial-gradient(farthest-side at 0 50%, rgba(0,0,0,0.15), rgba(0,0,0,0)),
+      radial-gradient(farthest-side at 100% 50%, rgba(0,0,0,0.15), rgba(0,0,0,0)) 100% 0;
+    background-repeat: no-repeat;
+    background-color: var(--color-bg-secondary);
+    background-size: 20px 100%, 20px 100%, 10px 100%, 10px 100%;
+    background-attachment: local, local, scroll, scroll;
+  }
+  
+  .selected-tags-inline::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Fix Tags Menu Overflow - centered modal style on mobile */
+  .tag-filter-popover {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 300px;
+    max-height: 70vh;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--color-border);
+    z-index: 100;
   }
 
   /* Recipe controls */

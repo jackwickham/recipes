@@ -1,38 +1,16 @@
 import { Router } from "express";
-import {
-  getRecipeById,
-  getChatHistory,
-  addChatMessage,
-  deleteChatHistory,
-} from "../db/queries.js";
+import { getRecipeById } from "../db/queries.js";
 import { getLLM } from "../services/llm/index.js";
 import type { ParsedRecipe } from "@recipes/shared";
 
 export const chatRouter = Router();
 
-// GET /api/recipes/:id/chat - Get chat history
-chatRouter.get("/:id/chat", (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) {
-    res.status(400).json({ error: "Invalid recipe ID" });
-    return;
-  }
-
-  const history = getChatHistory(id);
-  res.json(history);
-});
-
-// DELETE /api/recipes/:id/chat - Clear chat history
-chatRouter.delete("/:id/chat", (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) {
-    res.status(400).json({ error: "Invalid recipe ID" });
-    return;
-  }
-
-  deleteChatHistory(id);
-  res.json({ success: true });
-});
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+  metadata?: string | null;
+  createdAt: string;
+}
 
 // POST /api/recipes/:id/chat - Send message, get response
 chatRouter.post("/:id/chat", async (req, res) => {
@@ -43,11 +21,14 @@ chatRouter.post("/:id/chat", async (req, res) => {
       return;
     }
 
-    const { message } = req.body;
+    const { message, history } = req.body;
     if (!message || typeof message !== "string") {
       res.status(400).json({ error: "Message is required" });
       return;
     }
+
+    // Validate history if present
+    const chatHistory: ChatMessage[] = Array.isArray(history) ? history : [];
 
     const recipe = getRecipeById(id);
     if (!recipe) {
@@ -55,14 +36,8 @@ chatRouter.post("/:id/chat", async (req, res) => {
       return;
     }
 
-    // Save user message
-    addChatMessage(id, "user", message);
-
-    // Get chat history for context
-    const history = getChatHistory(id);
-
-    // Build prompt with recipe context
-    const prompt = buildChatPrompt(recipe, history);
+    // Build prompt with recipe context and provided history
+    const prompt = buildChatPrompt(recipe, chatHistory, message);
 
     // Get LLM response
     const llm = getLLM();
@@ -70,14 +45,6 @@ chatRouter.post("/:id/chat", async (req, res) => {
 
     // Parse response
     const { text, updatedRecipes } = parseChatResponse(response);
-
-    // Save assistant message
-    addChatMessage(
-      id,
-      "assistant",
-      text,
-      updatedRecipes.length > 0 ? JSON.stringify(updatedRecipes) : null
-    );
 
     res.json({
       message: text,
@@ -93,7 +60,8 @@ chatRouter.post("/:id/chat", async (req, res) => {
 
 function buildChatPrompt(
   recipe: ReturnType<typeof getRecipeById>,
-  history: ReturnType<typeof getChatHistory>
+  history: ChatMessage[],
+  newMessage: string
 ): string {
   const recipeJson = JSON.stringify(
     {
@@ -192,20 +160,16 @@ For CONTENT CHANGES (different ingredients/method):
 `;
 
   // Add conversation history
-  if (history.length > 1) {
+  if (history.length > 0) {
     prompt += "\nConversation history:\n";
-    // Skip the last message (it's the current one)
-    for (const msg of history.slice(0, -1)) {
+    for (const msg of history) {
       prompt += `${msg.role === "user" ? "User" : "Assistant"}: ${msg.content}\n`;
     }
     prompt += "\n";
   }
 
   // Add current message
-  const lastMessage = history[history.length - 1];
-  if (lastMessage) {
-    prompt += `User: ${lastMessage.content}\n\nRespond with valid JSON:`;
-  }
+  prompt += `User: ${newMessage}\n\nRespond with valid JSON:`;
 
   return prompt;
 }
