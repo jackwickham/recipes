@@ -8,10 +8,12 @@ import {
   deleteRecipe,
   createRecipe,
   updateRecipe,
+  scaleRecipe,
 } from "../api/client";
 import { PortionPicker } from "../components/PortionPicker";
 import { Timer } from "../components/Timer";
 import { ChatModal } from "../components/ChatModal";
+import { RecipePreviewModal } from "../components/RecipePreviewModal";
 import { useTimer } from "../hooks/useTimer";
 import { useWakeLock } from "../hooks/useWakeLock";
 import { useCookingList } from "../hooks/useCookingList";
@@ -56,6 +58,11 @@ export function RecipeDetail({ id }: Props) {
     string | undefined
   >(undefined);
   const [chatAutoSend, setChatAutoSend] = useState(false);
+
+  // Scaling state
+  const [scalingLoading, setScalingLoading] = useState(false);
+  const [showScalePreview, setShowScalePreview] = useState(false);
+  const [scaledRecipe, setScaledRecipe] = useState<ParsedRecipe | null>(null);
 
   const { timers, startTimer, stopTimer, resetTimer, getTimer } = useTimer();
   const wakeLock = useWakeLock();
@@ -122,7 +129,7 @@ export function RecipeDetail({ id }: Props) {
     }
   }
 
-  function handleRequestNewPortion() {
+  async function handleRequestNewPortion() {
     if (!recipe) return;
 
     // Prompt user for number of portions
@@ -139,10 +146,16 @@ export function RecipeDetail({ id }: Props) {
       return;
     }
 
-    // Set up chat with initial message and auto-send
-    setChatInitialMessage(`Create a version for ${portions} portions`);
-    setChatAutoSend(true);
-    setShowChat(true);
+    try {
+      setScalingLoading(true);
+      const scaled = await scaleRecipe(recipe.id, portions);
+      setScaledRecipe(scaled);
+      setShowScalePreview(true);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to scale recipe");
+    } finally {
+      setScalingLoading(false);
+    }
   }
 
   async function handleRatingChange(rating: "meh" | "good" | "great" | null) {
@@ -576,6 +589,29 @@ export function RecipeDetail({ id }: Props) {
         autoSendInitial={chatAutoSend}
         autoSavePortionVariants={chatAutoSend}
       />
+
+      {scaledRecipe && (
+        <RecipePreviewModal
+          recipe={scaledRecipe}
+          isOpen={showScalePreview}
+          onClose={() => {
+            setShowScalePreview(false);
+            setScaledRecipe(null);
+          }}
+          onSaveAsNew={handleSaveAsNew}
+          onSaveAsVariant={handleSaveAsVariant}
+          onReplaceRecipe={handleReplaceRecipe}
+          title={`Scale to ${scaledRecipe.servings} portions`}
+        />
+      )}
+
+      {scalingLoading && (
+        <div class="confirm-overlay">
+          <div class="confirm-dialog">
+            <p class="loading">Scaling recipe...</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

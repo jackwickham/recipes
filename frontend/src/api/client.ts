@@ -125,6 +125,16 @@ export async function createRecipeWithVariants(
   });
 }
 
+export async function scaleRecipe(
+  id: number,
+  targetServings: number
+): Promise<ParsedRecipe> {
+  return request<ParsedRecipe>(`/recipes/${id}/scale`, {
+    method: "POST",
+    body: JSON.stringify({ targetServings }),
+  });
+}
+
 // Chat
 export interface ChatMessage {
   role: "user" | "assistant";

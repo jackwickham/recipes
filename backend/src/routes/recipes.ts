@@ -9,6 +9,7 @@ import {
   updateRecipeRating,
 } from "../db/queries.js";
 import type { ParsedRecipeWithVariants } from "@recipes/shared";
+import { generateScaledRecipe } from "../services/recipe-parser.js";
 
 export const recipesRouter = Router();
 
@@ -28,6 +29,46 @@ recipesRouter.get("/:id", (req, res) => {
   }
 
   res.json(recipe);
+});
+
+// POST /api/recipes/:id/scale - Scale recipe to new servings
+recipesRouter.post("/:id/scale", async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const { targetServings } = req.body;
+
+  if (isNaN(id)) {
+    return res.status(400).json({ error: "Invalid recipe ID" });
+  }
+
+  if (!targetServings || typeof targetServings !== "number" || targetServings <= 0) {
+    return res.status(400).json({ error: "Invalid target servings" });
+  }
+
+  const recipe = getRecipeById(id);
+  if (!recipe) {
+    return res.status(404).json({ error: `Recipe ${id} not found` });
+  }
+
+  try {
+    const scaled = await generateScaledRecipe(recipe, targetServings);
+    
+    // Explicitly set the parentRecipeId and variantType for the frontend to use
+    // This follows the same logic as the "fix" we just applied:
+    // If original is a portion variant, parent is its parent.
+    // Otherwise, parent is the original.
+    const baseId =
+      recipe.variantType === "portion" && recipe.parentRecipeId
+        ? recipe.parentRecipeId
+        : recipe.id;
+
+    scaled.parentRecipeId = baseId;
+    scaled.variantType = "portion";
+
+    res.json(scaled);
+  } catch (err) {
+    console.error("Scaling error:", err);
+    res.status(500).json({ error: "Failed to scale recipe" });
+  }
 });
 
 // POST /api/recipes - Create new recipe

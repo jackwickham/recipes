@@ -158,6 +158,59 @@ function extractJsonFromResponse(response: string): unknown {
   }
 }
 
+const SCALE_RECIPE_PROMPT = `You are a precise kitchen assistant. Scale the following recipe to {{servings}} servings.
+
+IMPORTANT RULES:
+1. Scale all ingredient quantities accurately based on the ratio between new and old servings.
+2. Adjust cooking times only if necessary (e.g., a larger roast takes longer, but boiling pasta doesn't).
+3. Return the complete recipe as valid JSON.
+4. Keep the same title, description, and tags.
+5. In step instructions, update {{qty:VALUE:UNIT}} markers to match the new quantities.
+
+Return ONLY valid JSON in this exact format:
+{
+  "title": "Recipe Title",
+  "description": "Brief description",
+  "servings": {{servings}},
+  "prepTimeMinutes": 15,
+  "cookTimeMinutes": 30,
+  "ingredients": [
+    {"name": "flour", "quantity": 500, "unit": "g", "notes": "sifted"}
+  ],
+  "steps": [
+    {"instruction": "Add {{qty:500:g}} flour..."}
+  ],
+  "suggestedTags": ["tag1", "tag2"]
+}
+
+Original Recipe:
+`;
+
+export async function generateScaledRecipe(
+  recipe: any, // Using any to avoid circular dependency on RecipeWithDetails if not available in this file context
+  targetServings: number
+): Promise<ParsedRecipe> {
+  const recipeJson = JSON.stringify({
+    title: recipe.title,
+    description: recipe.description,
+    servings: recipe.servings,
+    prepTimeMinutes: recipe.prepTimeMinutes,
+    cookTimeMinutes: recipe.cookTimeMinutes,
+    ingredients: recipe.ingredients,
+    steps: recipe.steps,
+    tags: recipe.tags
+  }, null, 2);
+
+  const prompt = SCALE_RECIPE_PROMPT.replace("{{servings}}", targetServings.toString())
+    .replace("{{servings}}", targetServings.toString()) // Replace second occurrence in JSON example
+    + recipeJson;
+
+  const llm = getLLM();
+  const response = await llm.complete(prompt);
+  const parsed = extractJsonFromResponse(response);
+  return validateParsedRecipe(parsed);
+}
+
 export async function generateRecipeFromPrompt(prompt: string): Promise<ParsedRecipe> {
   const llm = getLLM();
   const response = await llm.complete(RECIPE_GENERATE_PROMPT + prompt);
