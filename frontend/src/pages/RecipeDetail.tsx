@@ -197,6 +197,11 @@ export function RecipeDetail({ id }: Props) {
     setChatAutoSend(false);
   }
 
+  function closePreview() {
+    setShowScalePreview(false);
+    setScaledRecipe(null);
+  }
+
   async function handleSaveAsNew(parsed: ParsedRecipe) {
     try {
       const newRecipe = await createRecipe({
@@ -216,6 +221,7 @@ export function RecipeDetail({ id }: Props) {
         })),
       });
       closeChat();
+      closePreview();
       route(`/recipe/${newRecipe.id}`);
     } catch (err) {
       console.error("Failed to save recipe:", err);
@@ -261,6 +267,7 @@ export function RecipeDetail({ id }: Props) {
         })),
       });
       closeChat();
+      closePreview();
 
       // Navigate to parent with servings query param if it's a portion variant
       if (newRecipe.variantType === "portion") {
@@ -291,6 +298,7 @@ export function RecipeDetail({ id }: Props) {
         })),
       });
       closeChat();
+      closePreview();
       loadRecipe();
     } catch (err) {
       console.error("Failed to update recipe:", err);
@@ -594,10 +602,7 @@ export function RecipeDetail({ id }: Props) {
         <RecipePreviewModal
           recipe={scaledRecipe}
           isOpen={showScalePreview}
-          onClose={() => {
-            setShowScalePreview(false);
-            setScaledRecipe(null);
-          }}
+          onClose={closePreview}
           onSave={handleSaveAsVariant}
           title={`Scale to ${scaledRecipe.servings} portions`}
         />
