@@ -1,3 +1,5 @@
+import { formatDuration } from "../hooks/useTimer";
+
 // Scale a quantity by a multiplier
 export function scaleQuantity(value: number, scale: number): number {
   return value * scale;
@@ -44,12 +46,12 @@ export interface TimerInfo {
 
 export function extractTimers(text: string): TimerInfo[] {
   const timers: TimerInfo[] = [];
-  const regex = /\{\{timer:(\d+)\}\}/g;
+  const regex = /\{\{timer:(\d*\.?\d+)\}\}/g;
   let match;
 
   while ((match = regex.exec(text)) !== null) {
     timers.push({
-      minutes: parseInt(match[1], 10),
+      minutes: parseFloat(match[1]),
       position: match.index,
     });
   }
@@ -59,14 +61,9 @@ export function extractTimers(text: string): TimerInfo[] {
 
 // Render timer markers as readable text
 export function renderTimerMarkers(text: string): string {
-  return text.replace(/\{\{timer:(\d+)\}\}/g, (_, minutes) => {
-    const mins = parseInt(minutes, 10);
-    if (mins >= 60) {
-      const hours = Math.floor(mins / 60);
-      const remainingMins = mins % 60;
-      return remainingMins > 0 ? `${hours}h ${remainingMins}min` : `${hours}h`;
-    }
-    return `${mins} min`;
+  return text.replace(/\{\{timer:(\d*\.?\d+)\}\}/g, (_, minutes) => {
+    const mins = parseFloat(minutes);
+    return formatDuration(Math.round(mins * 60));
   });
 }
 

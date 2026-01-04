@@ -119,20 +119,13 @@ export interface ChatResponse {
   updatedRecipes: ParsedRecipe[];
 }
 
-export async function getChatHistory(recipeId: number): Promise<ChatMessage[]> {
-  return request<ChatMessage[]>(`/recipes/${recipeId}/chat`);
-}
-
-export async function clearChatHistory(recipeId: number): Promise<void> {
-  await request(`/recipes/${recipeId}/chat`, { method: "DELETE" });
-}
-
 export async function sendChatMessage(
   recipeId: number,
-  message: string
+  message: string,
+  history: ChatMessage[]
 ): Promise<ChatResponse> {
   return request<ChatResponse>(`/recipes/${recipeId}/chat`, {
     method: "POST",
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, history }),
   });
 }
