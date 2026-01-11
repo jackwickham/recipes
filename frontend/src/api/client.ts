@@ -153,8 +153,13 @@ export async function importFromPhotos(images: string[]): Promise<ImportResult> 
 }
 
 export interface ImportProgress {
-  stage: "fetching" | "extracting" | "parsing" | "complete" | "error";
+  stage: "fetching" | "extracting" | "parsing" | "saving" | "complete" | "error";
   message: string;
+}
+
+export interface QueueImportResult {
+  recipeIds: number[];
+  title: string;
 }
 
 export async function importFromPhotosWithProgress(
@@ -283,6 +288,172 @@ export async function generateRecipe(prompt: string): Promise<ImportResult> {
     method: "POST",
     body: JSON.stringify({ prompt }),
   });
+}
+
+// Queue imports - fire and forget, auto-saves to database
+export function queueImportFromUrl(
+  url: string,
+  onProgress?: (progress: ImportProgress) => void,
+  onComplete?: (result: QueueImportResult) => void,
+  onError?: (error: string) => void
+): void {
+  fetch(`${API_BASE}/import/url/queue`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url }),
+  })
+    .then(async (response) => {
+      if (!response.ok) {
+        const error = await response
+          .json()
+          .catch(() => ({ error: response.statusText }));
+        throw new Error(error.error || "Request failed");
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("No response body");
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const data = JSON.parse(line.slice(6));
+            onProgress?.({ stage: data.stage, message: data.message });
+
+            if (data.stage === "complete") {
+              onComplete?.(data.data as QueueImportResult);
+              return;
+            }
+            if (data.stage === "error") {
+              onError?.(data.message || "Import failed");
+              return;
+            }
+          }
+        }
+      }
+    })
+    .catch((err) => {
+      onError?.(err instanceof Error ? err.message : "Import failed");
+    });
+}
+
+export function queueImportFromPhotos(
+  images: string[],
+  onProgress?: (progress: ImportProgress) => void,
+  onComplete?: (result: QueueImportResult) => void,
+  onError?: (error: string) => void
+): void {
+  fetch(`${API_BASE}/import/photos/queue`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ images }),
+  })
+    .then(async (response) => {
+      if (!response.ok) {
+        const error = await response
+          .json()
+          .catch(() => ({ error: response.statusText }));
+        throw new Error(error.error || "Request failed");
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("No response body");
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const data = JSON.parse(line.slice(6));
+            onProgress?.({ stage: data.stage, message: data.message });
+
+            if (data.stage === "complete") {
+              onComplete?.(data.data as QueueImportResult);
+              return;
+            }
+            if (data.stage === "error") {
+              onError?.(data.message || "Import failed");
+              return;
+            }
+          }
+        }
+      }
+    })
+    .catch((err) => {
+      onError?.(err instanceof Error ? err.message : "Import failed");
+    });
+}
+
+export function queueImportFromText(
+  text: string,
+  onProgress?: (progress: ImportProgress) => void,
+  onComplete?: (result: QueueImportResult) => void,
+  onError?: (error: string) => void
+): void {
+  fetch(`${API_BASE}/import/text/queue`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  })
+    .then(async (response) => {
+      if (!response.ok) {
+        const error = await response
+          .json()
+          .catch(() => ({ error: response.statusText }));
+        throw new Error(error.error || "Request failed");
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("No response body");
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const data = JSON.parse(line.slice(6));
+            onProgress?.({ stage: data.stage, message: data.message });
+
+            if (data.stage === "complete") {
+              onComplete?.(data.data as QueueImportResult);
+              return;
+            }
+            if (data.stage === "error") {
+              onError?.(data.message || "Processing failed");
+              return;
+            }
+          }
+        }
+      }
+    })
+    .catch((err) => {
+      onError?.(err instanceof Error ? err.message : "Processing failed");
+    });
 }
 
 export interface CreateWithVariantsResult {

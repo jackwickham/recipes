@@ -3,32 +3,17 @@ import { route } from "preact-router";
 import { RecipeForm } from "../components/RecipeForm";
 import {
   createRecipe,
-  createRecipeWithVariants,
-  importFromUrlWithProgress,
-  importFromPhotosWithProgress,
-  importFromTextWithProgress,
-  type ImportResult,
+  queueImportFromUrl,
+  queueImportFromPhotos,
+  queueImportFromText,
   type ImportProgress,
 } from "../api/client";
-import type {
-  CreateRecipeInput,
-  ParsedRecipe,
-  ParsedRecipeWithVariants,
-} from "@recipes/shared";
-import { hasVariants } from "@recipes/shared";
+import type { CreateRecipeInput } from "@recipes/shared";
 
-type Mode = "choose" | "manual" | "photo" | "url" | "text" | "review" | "saving-variants";
-
-interface ImportState {
-  sourceType: "photo" | "url" | "text";
-  sourceText: string;
-  sourceContext: string | null;
-  recipe: ParsedRecipe;
-}
+type Mode = "choose" | "manual" | "photo" | "url" | "text";
 
 export function AddRecipe({ path }: { path?: string }) {
   const [mode, setMode] = useState<Mode>("choose");
-  const [importState, setImportState] = useState<ImportState | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // URL import state
@@ -51,91 +36,52 @@ export function AddRecipe({ path }: { path?: string }) {
     route(`/recipe/${recipe.id}`);
   }
 
-  async function handleSaveVariants(
-    result: ImportResult,
-    parsed: ParsedRecipeWithVariants
-  ) {
-    setMode("saving-variants");
-    try {
-      const { recipe } = await createRecipeWithVariants(
-        parsed,
-        result.sourceType,
-        result.sourceText,
-        result.sourceContext
-      );
-      route(`/recipe/${recipe.id}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save variants");
-      setMode("choose");
-    }
-  }
-
-  function handleImportResult(result: ImportResult) {
-    if (hasVariants(result.recipe)) {
-      // Auto-save variants without review
-      handleSaveVariants(result, result.recipe);
-    } else {
-      // Single recipe - show review form
-      setImportState({
-        sourceType: result.sourceType,
-        sourceText: result.sourceText,
-        sourceContext: result.sourceContext,
-        recipe: result.recipe,
-      });
-      setMode("review");
-    }
-  }
-
-  async function handleImportFromUrl() {
+  function handleImportFromUrl() {
     if (!urlInput.trim()) {
       setError("Please enter a URL");
       return;
     }
 
-    try {
-      setError(null);
-      setUrlProgress({ stage: "fetching", message: "Starting..." });
+    setError(null);
+    setUrlProgress({ stage: "fetching", message: "Starting..." });
 
-      const result = await importFromUrlWithProgress(
-        urlInput.trim(),
-        (progress) => {
-          setUrlProgress(progress);
-        }
-      );
-
-      setUrlProgress(null);
-      handleImportResult(result);
-    } catch (err) {
-      setUrlProgress(null);
-      setError(
-        err instanceof Error ? err.message : "Failed to import from URL"
-      );
-    }
+    queueImportFromUrl(
+      urlInput.trim(),
+      (progress) => setUrlProgress(progress),
+      () => {
+        // Import complete - clear progress, recipe is saved
+        setUrlProgress(null);
+        setUrlInput("");
+      },
+      (errorMsg) => {
+        setUrlProgress(null);
+        setError(errorMsg);
+      }
+    );
   }
 
-  async function handleImportFromText() {
+  function handleImportFromText() {
     if (!textInput.trim()) {
       setError("Please enter some recipe text");
       return;
     }
 
-    try {
-      setError(null);
-      setTextProgress({ stage: "parsing", message: "Starting..." });
+    setError(null);
+    setTextProgress({ stage: "parsing", message: "Starting..." });
 
-      const result = await importFromTextWithProgress(
-        textInput.trim(),
-        (progress) => {
-          setTextProgress(progress);
-        }
-      );
-
-      setTextProgress(null);
-      handleImportResult(result);
-    } catch (err) {
-      setTextProgress(null);
-      setError(err instanceof Error ? err.message : "Failed to parse text");
-    }
+    queueImportFromText(
+      textInput.trim(),
+      (progress) => setTextProgress(progress),
+      () => {
+        // Import complete - clear progress, recipe is saved
+        setTextProgress(null);
+        setTextInput("");
+      },
+      (errorMsg) => {
+        setTextProgress(null);
+        setError(errorMsg);
+      }
+    );
   }
 
   function handlePhotoSelect(e: Event) {
@@ -171,74 +117,45 @@ export function AddRecipe({ path }: { path?: string }) {
     setPhotos((prev) => prev.filter((_, i) => i !== index));
   }
 
-  async function handleImportFromPhotos() {
+  function handleImportFromPhotos() {
     if (photos.length === 0) {
       setError("Please add at least one photo");
       return;
     }
 
-    try {
-      setError(null);
-      setPhotoProgress({ stage: "extracting", message: "Starting..." });
+    setError(null);
+    setPhotoProgress({ stage: "extracting", message: "Starting..." });
 
-      const result = await importFromPhotosWithProgress(photos, (progress) => {
-        setPhotoProgress(progress);
-      });
-
-      setPhotoProgress(null);
-      handleImportResult(result);
-    } catch (err) {
-      setPhotoProgress(null);
-      setError(err instanceof Error ? err.message : "Failed to extract from photos");
-    }
+    queueImportFromPhotos(
+      photos,
+      (progress) => setPhotoProgress(progress),
+      () => {
+        // Import complete - clear progress, recipe is saved
+        setPhotoProgress(null);
+        setPhotos([]);
+      },
+      (errorMsg) => {
+        setPhotoProgress(null);
+        setError(errorMsg);
+      }
+    );
   }
 
   function handleBack() {
     setMode("choose");
     setError(null);
-    setImportState(null);
   }
 
-  // Review/Edit imported recipe
-  if (mode === "review" && importState) {
-    const initialData: Partial<CreateRecipeInput> = {
-      title: importState.recipe.title,
-      description: importState.recipe.description,
-      servings: importState.recipe.servings,
-      prepTimeMinutes: importState.recipe.prepTimeMinutes,
-      cookTimeMinutes: importState.recipe.cookTimeMinutes,
-      sourceType: importState.sourceType,
-      sourceText: importState.sourceText,
-      sourceContext: importState.sourceContext,
-      ingredients: importState.recipe.ingredients,
-      steps: importState.recipe.steps,
-      tags: importState.recipe.suggestedTags.map((tag) => ({
-        tag,
-        isAutoGenerated: true,
-      })),
-    };
-
-    return (
-      <div class="page">
-        <header class="header">
-          <button class="btn" onClick={handleBack}>
-            Back
-          </button>
-          <h1>Review Imported Recipe</h1>
-        </header>
-        <main>
-          <p class="import-success">
-            Recipe extracted successfully. Review and edit before saving.
-          </p>
-          <RecipeForm
-            recipe={initialData as CreateRecipeInput}
-            onSubmit={handleSubmit}
-            onCancel={handleBack}
-            submitLabel="Save Recipe"
-          />
-        </main>
-      </div>
-    );
+  function handleImportAnother() {
+    // Reset the form for another import (current import continues in background)
+    setUrlInput("");
+    setUrlProgress(null);
+    setTextInput("");
+    setTextProgress(null);
+    setPhotos([]);
+    setPhotoProgress(null);
+    setError(null);
+    setMode("choose");
   }
 
   // Manual entry
@@ -321,6 +238,9 @@ export function AddRecipe({ path }: { path?: string }) {
             <div class="import-progress">
               <div class="import-spinner" />
               <div class="import-progress-message">{photoProgress.message}</div>
+              <button class="btn" onClick={handleImportAnother}>
+                Import Another
+              </button>
             </div>
           ) : (
             <div class="form-actions">
@@ -390,6 +310,9 @@ export function AddRecipe({ path }: { path?: string }) {
             <div class="import-progress">
               <div class="import-spinner" />
               <div class="import-progress-message">{urlProgress.message}</div>
+              <button class="btn" onClick={handleImportAnother}>
+                Import Another
+              </button>
             </div>
           )}
         </main>
@@ -446,6 +369,9 @@ export function AddRecipe({ path }: { path?: string }) {
             <div class="import-progress">
               <div class="import-spinner" />
               <div class="import-progress-message">{textProgress.message}</div>
+              <button class="btn" onClick={handleImportAnother}>
+                Import Another
+              </button>
             </div>
           )}
         </main>
