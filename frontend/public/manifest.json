@@ -1,7 +1,7 @@
 {
   "name": "Recipes",
   "short_name": "Recipes",
-  "description": "Personal recipe collection with scaling and timers",
+  "description": "Recipe manager",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
