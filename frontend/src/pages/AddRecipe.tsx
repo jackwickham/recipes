@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "preact/hooks";
+import { useState, useRef } from "preact/hooks";
 import { route } from "preact-router";
 import { RecipeForm } from "../components/RecipeForm";
 import {
@@ -7,6 +7,7 @@ import {
   queueImportFromPhotos,
   queueImportFromText,
   type ImportProgress,
+  type QueueImportResult,
 } from "../api/client";
 import type { CreateRecipeInput } from "@recipes/shared";
 
@@ -34,6 +35,38 @@ export function AddRecipe({ path }: { path?: string }) {
   // Track current import generation to ignore stale callbacks
   const importGeneration = useRef(0);
 
+  // Track successful imports for toast notifications
+  const [successfulImports, setSuccessfulImports] = useState<QueueImportResult[]>([]);
+
+  function dismissSuccess(index: number) {
+    setSuccessfulImports((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  // Success toasts component (renders on all screens)
+  const successToasts = successfulImports.length > 0 && (
+    <div class="import-toasts">
+      {successfulImports.map((result, idx) => (
+        <div key={idx} class="import-toast">
+          <span class="import-toast-message">
+            Imported "{result.title}"
+          </span>
+          <a
+            href={`/recipe/${result.recipeIds[0]}`}
+            class="btn btn-small btn-primary"
+          >
+            View
+          </a>
+          <button
+            class="btn btn-small"
+            onClick={() => dismissSuccess(idx)}
+          >
+            Dismiss
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+
   async function handleSubmit(data: CreateRecipeInput) {
     const recipe = await createRecipe(data);
     route(`/recipe/${recipe.id}`);
@@ -54,12 +87,14 @@ export function AddRecipe({ path }: { path?: string }) {
       (progress) => {
         if (importGeneration.current === gen) setUrlProgress(progress);
       },
-      () => {
+      (result) => {
         // Import complete - clear progress if still current, recipe is saved
         if (importGeneration.current === gen) {
           setUrlProgress(null);
           setUrlInput("");
         }
+        // Always show success notification (even if user moved on)
+        setSuccessfulImports((prev) => [...prev, result]);
       },
       (errorMsg) => {
         if (importGeneration.current === gen) {
@@ -85,12 +120,14 @@ export function AddRecipe({ path }: { path?: string }) {
       (progress) => {
         if (importGeneration.current === gen) setTextProgress(progress);
       },
-      () => {
+      (result) => {
         // Import complete - clear progress if still current, recipe is saved
         if (importGeneration.current === gen) {
           setTextProgress(null);
           setTextInput("");
         }
+        // Always show success notification (even if user moved on)
+        setSuccessfulImports((prev) => [...prev, result]);
       },
       (errorMsg) => {
         if (importGeneration.current === gen) {
@@ -149,12 +186,14 @@ export function AddRecipe({ path }: { path?: string }) {
       (progress) => {
         if (importGeneration.current === gen) setPhotoProgress(progress);
       },
-      () => {
+      (result) => {
         // Import complete - clear progress if still current, recipe is saved
         if (importGeneration.current === gen) {
           setPhotoProgress(null);
           setPhotos([]);
         }
+        // Always show success notification (even if user moved on)
+        setSuccessfulImports((prev) => [...prev, result]);
       },
       (errorMsg) => {
         if (importGeneration.current === gen) {
@@ -201,6 +240,7 @@ export function AddRecipe({ path }: { path?: string }) {
             submitLabel="Create Recipe"
           />
         </main>
+        {successToasts}
       </div>
     );
   }
@@ -283,6 +323,7 @@ export function AddRecipe({ path }: { path?: string }) {
             </div>
           )}
         </main>
+        {successToasts}
       </div>
     );
   }
@@ -342,6 +383,7 @@ export function AddRecipe({ path }: { path?: string }) {
             </div>
           )}
         </main>
+        {successToasts}
       </div>
     );
   }
@@ -401,6 +443,7 @@ export function AddRecipe({ path }: { path?: string }) {
             </div>
           )}
         </main>
+        {successToasts}
       </div>
     );
   }
@@ -434,6 +477,7 @@ export function AddRecipe({ path }: { path?: string }) {
           </button>
         </div>
       </main>
+      {successToasts}
     </div>
   );
 }

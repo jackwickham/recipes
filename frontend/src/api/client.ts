@@ -87,21 +87,17 @@ export async function importFromUrl(url: string): Promise<ImportResult> {
   });
 }
 
-export async function importFromUrlWithProgress(
-  url: string,
-  onProgress: (progress: ImportProgress) => void
-): Promise<ImportResult> {
-  const response = await fetch(`${API_BASE}/import/url/stream`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url }),
-  });
-
+// Helper to process SSE streams - reduces code duplication
+async function processSSEStream<T>(
+  response: Response,
+  onProgress: (progress: ImportProgress) => void,
+  errorMessage: string = "Request failed"
+): Promise<T> {
   if (!response.ok) {
     const error = await response
       .json()
       .catch(() => ({ error: response.statusText }));
-    throw new Error(error.error || "Request failed");
+    throw new Error(error.error || errorMessage);
   }
 
   const reader = response.body?.getReader();
@@ -117,32 +113,37 @@ export async function importFromUrlWithProgress(
     if (done) break;
 
     buffer += decoder.decode(value, { stream: true });
-
-    // Parse SSE events from buffer
     const lines = buffer.split("\n");
     buffer = lines.pop() || "";
 
     for (const line of lines) {
       if (line.startsWith("data: ")) {
         const data = JSON.parse(line.slice(6));
-
-        onProgress({
-          stage: data.stage,
-          message: data.message,
-        });
+        onProgress({ stage: data.stage, message: data.message });
 
         if (data.stage === "complete") {
-          return data.data as ImportResult;
+          return data.data as T;
         }
-
         if (data.stage === "error") {
-          throw new Error(data.message || "Import failed");
+          throw new Error(data.message || errorMessage);
         }
       }
     }
   }
 
   throw new Error("Stream ended without completion");
+}
+
+export async function importFromUrlWithProgress(
+  url: string,
+  onProgress: (progress: ImportProgress) => void
+): Promise<ImportResult> {
+  const response = await fetch(`${API_BASE}/import/url/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url }),
+  });
+  return processSSEStream<ImportResult>(response, onProgress, "Import failed");
 }
 
 export async function importFromPhotos(images: string[]): Promise<ImportResult> {
@@ -171,51 +172,7 @@ export async function importFromPhotosWithProgress(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ images }),
   });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: response.statusText }));
-    throw new Error(error.error || "Request failed");
-  }
-
-  const reader = response.body?.getReader();
-  if (!reader) {
-    throw new Error("No response body");
-  }
-
-  const decoder = new TextDecoder();
-  let buffer = "";
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-
-    // Parse SSE events from buffer
-    const lines = buffer.split("\n");
-    buffer = lines.pop() || "";
-
-    for (const line of lines) {
-      if (line.startsWith("data: ")) {
-        const data = JSON.parse(line.slice(6));
-
-        onProgress({
-          stage: data.stage,
-          message: data.message,
-        });
-
-        if (data.stage === "complete") {
-          return data.data as ImportResult;
-        }
-
-        if (data.stage === "error") {
-          throw new Error(data.message || "Import failed");
-        }
-      }
-    }
-  }
-
-  throw new Error("Stream ended without completion");
+  return processSSEStream<ImportResult>(response, onProgress, "Import failed");
 }
 
 export async function importFromText(text: string): Promise<ImportResult> {
@@ -234,53 +191,7 @@ export async function importFromTextWithProgress(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text }),
   });
-
-  if (!response.ok) {
-    const error = await response
-      .json()
-      .catch(() => ({ error: response.statusText }));
-    throw new Error(error.error || "Request failed");
-  }
-
-  const reader = response.body?.getReader();
-  if (!reader) {
-    throw new Error("No response body");
-  }
-
-  const decoder = new TextDecoder();
-  let buffer = "";
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-
-    // Parse SSE events from buffer
-    const lines = buffer.split("\n");
-    buffer = lines.pop() || "";
-
-    for (const line of lines) {
-      if (line.startsWith("data: ")) {
-        const data = JSON.parse(line.slice(6));
-
-        onProgress({
-          stage: data.stage,
-          message: data.message,
-        });
-
-        if (data.stage === "complete") {
-          return data.data as ImportResult;
-        }
-
-        if (data.stage === "error") {
-          throw new Error(data.message || "Processing failed");
-        }
-      }
-    }
-  }
-
-  throw new Error("Stream ended without completion");
+  return processSSEStream<ImportResult>(response, onProgress, "Processing failed");
 }
 
 export async function generateRecipe(prompt: string): Promise<ImportResult> {
@@ -291,23 +202,21 @@ export async function generateRecipe(prompt: string): Promise<ImportResult> {
 }
 
 // Queue imports - fire and forget, auto-saves to database
-export function queueImportFromUrl(
-  url: string,
-  onProgress?: (progress: ImportProgress) => void,
-  onComplete?: (result: QueueImportResult) => void,
-  onError?: (error: string) => void
+// Helper for callback-based SSE processing
+function processSSEStreamWithCallbacks<T>(
+  fetchPromise: Promise<Response>,
+  onProgress: ((progress: ImportProgress) => void) | undefined,
+  onComplete: ((result: T) => void) | undefined,
+  onError: ((error: string) => void) | undefined,
+  errorMessage: string
 ): void {
-  fetch(`${API_BASE}/import/url/queue`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url }),
-  })
+  fetchPromise
     .then(async (response) => {
       if (!response.ok) {
         const error = await response
           .json()
           .catch(() => ({ error: response.statusText }));
-        throw new Error(error.error || "Request failed");
+        throw new Error(error.error || errorMessage);
       }
 
       const reader = response.body?.getReader();
@@ -330,11 +239,11 @@ export function queueImportFromUrl(
             onProgress?.({ stage: data.stage, message: data.message });
 
             if (data.stage === "complete") {
-              onComplete?.(data.data as QueueImportResult);
+              onComplete?.(data.data as T);
               return;
             }
             if (data.stage === "error") {
-              onError?.(data.message || "Import failed");
+              onError?.(data.message || errorMessage);
               return;
             }
           }
@@ -342,8 +251,27 @@ export function queueImportFromUrl(
       }
     })
     .catch((err) => {
-      onError?.(err instanceof Error ? err.message : "Import failed");
+      onError?.(err instanceof Error ? err.message : errorMessage);
     });
+}
+
+export function queueImportFromUrl(
+  url: string,
+  onProgress?: (progress: ImportProgress) => void,
+  onComplete?: (result: QueueImportResult) => void,
+  onError?: (error: string) => void
+): void {
+  processSSEStreamWithCallbacks(
+    fetch(`${API_BASE}/import/url/queue`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+    }),
+    onProgress,
+    onComplete,
+    onError,
+    "Import failed"
+  );
 }
 
 export function queueImportFromPhotos(
@@ -352,53 +280,17 @@ export function queueImportFromPhotos(
   onComplete?: (result: QueueImportResult) => void,
   onError?: (error: string) => void
 ): void {
-  fetch(`${API_BASE}/import/photos/queue`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ images }),
-  })
-    .then(async (response) => {
-      if (!response.ok) {
-        const error = await response
-          .json()
-          .catch(() => ({ error: response.statusText }));
-        throw new Error(error.error || "Request failed");
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error("No response body");
-
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = JSON.parse(line.slice(6));
-            onProgress?.({ stage: data.stage, message: data.message });
-
-            if (data.stage === "complete") {
-              onComplete?.(data.data as QueueImportResult);
-              return;
-            }
-            if (data.stage === "error") {
-              onError?.(data.message || "Import failed");
-              return;
-            }
-          }
-        }
-      }
-    })
-    .catch((err) => {
-      onError?.(err instanceof Error ? err.message : "Import failed");
-    });
+  processSSEStreamWithCallbacks(
+    fetch(`${API_BASE}/import/photos/queue`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ images }),
+    }),
+    onProgress,
+    onComplete,
+    onError,
+    "Import failed"
+  );
 }
 
 export function queueImportFromText(
@@ -407,53 +299,17 @@ export function queueImportFromText(
   onComplete?: (result: QueueImportResult) => void,
   onError?: (error: string) => void
 ): void {
-  fetch(`${API_BASE}/import/text/queue`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text }),
-  })
-    .then(async (response) => {
-      if (!response.ok) {
-        const error = await response
-          .json()
-          .catch(() => ({ error: response.statusText }));
-        throw new Error(error.error || "Request failed");
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error("No response body");
-
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = JSON.parse(line.slice(6));
-            onProgress?.({ stage: data.stage, message: data.message });
-
-            if (data.stage === "complete") {
-              onComplete?.(data.data as QueueImportResult);
-              return;
-            }
-            if (data.stage === "error") {
-              onError?.(data.message || "Processing failed");
-              return;
-            }
-          }
-        }
-      }
-    })
-    .catch((err) => {
-      onError?.(err instanceof Error ? err.message : "Processing failed");
-    });
+  processSSEStreamWithCallbacks(
+    fetch(`${API_BASE}/import/text/queue`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    }),
+    onProgress,
+    onComplete,
+    onError,
+    "Processing failed"
+  );
 }
 
 export interface CreateWithVariantsResult {

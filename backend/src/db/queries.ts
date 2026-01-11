@@ -297,6 +297,9 @@ export function updateRecipe(
 
 export function deleteRecipe(id: number): void {
   const db = getDb();
+  // Delete all variants first (recipes that have this as their parent)
+  db.prepare("DELETE FROM recipes WHERE parent_recipe_id = ?").run(id);
+  // Then delete the recipe itself
   db.prepare("DELETE FROM recipes WHERE id = ?").run(id);
 }
 

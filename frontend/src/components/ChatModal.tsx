@@ -331,7 +331,7 @@ export function ChatModal({
                       </div>
                     )}
 
-                    {recipe.suggestedTags.length > 0 && (
+                    {recipe.suggestedTags?.length > 0 && (
                       <div class="chat-recipe-tags">
                         {recipe.suggestedTags.map((tag) => (
                           <span key={tag} class="tag-chip">
