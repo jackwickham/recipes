@@ -1,4 +1,4 @@
-import { useState, useRef } from "preact/hooks";
+import { useState, useRef, useCallback } from "preact/hooks";
 import { route } from "preact-router";
 import { RecipeForm } from "../components/RecipeForm";
 import {
@@ -31,6 +31,9 @@ export function AddRecipe({ path }: { path?: string }) {
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Track current import generation to ignore stale callbacks
+  const importGeneration = useRef(0);
+
   async function handleSubmit(data: CreateRecipeInput) {
     const recipe = await createRecipe(data);
     route(`/recipe/${recipe.id}`);
@@ -45,17 +48,24 @@ export function AddRecipe({ path }: { path?: string }) {
     setError(null);
     setUrlProgress({ stage: "fetching", message: "Starting..." });
 
+    const gen = importGeneration.current;
     queueImportFromUrl(
       urlInput.trim(),
-      (progress) => setUrlProgress(progress),
+      (progress) => {
+        if (importGeneration.current === gen) setUrlProgress(progress);
+      },
       () => {
-        // Import complete - clear progress, recipe is saved
-        setUrlProgress(null);
-        setUrlInput("");
+        // Import complete - clear progress if still current, recipe is saved
+        if (importGeneration.current === gen) {
+          setUrlProgress(null);
+          setUrlInput("");
+        }
       },
       (errorMsg) => {
-        setUrlProgress(null);
-        setError(errorMsg);
+        if (importGeneration.current === gen) {
+          setUrlProgress(null);
+          setError(errorMsg);
+        }
       }
     );
   }
@@ -69,17 +79,24 @@ export function AddRecipe({ path }: { path?: string }) {
     setError(null);
     setTextProgress({ stage: "parsing", message: "Starting..." });
 
+    const gen = importGeneration.current;
     queueImportFromText(
       textInput.trim(),
-      (progress) => setTextProgress(progress),
+      (progress) => {
+        if (importGeneration.current === gen) setTextProgress(progress);
+      },
       () => {
-        // Import complete - clear progress, recipe is saved
-        setTextProgress(null);
-        setTextInput("");
+        // Import complete - clear progress if still current, recipe is saved
+        if (importGeneration.current === gen) {
+          setTextProgress(null);
+          setTextInput("");
+        }
       },
       (errorMsg) => {
-        setTextProgress(null);
-        setError(errorMsg);
+        if (importGeneration.current === gen) {
+          setTextProgress(null);
+          setError(errorMsg);
+        }
       }
     );
   }
@@ -126,17 +143,24 @@ export function AddRecipe({ path }: { path?: string }) {
     setError(null);
     setPhotoProgress({ stage: "extracting", message: "Starting..." });
 
+    const gen = importGeneration.current;
     queueImportFromPhotos(
       photos,
-      (progress) => setPhotoProgress(progress),
+      (progress) => {
+        if (importGeneration.current === gen) setPhotoProgress(progress);
+      },
       () => {
-        // Import complete - clear progress, recipe is saved
-        setPhotoProgress(null);
-        setPhotos([]);
+        // Import complete - clear progress if still current, recipe is saved
+        if (importGeneration.current === gen) {
+          setPhotoProgress(null);
+          setPhotos([]);
+        }
       },
       (errorMsg) => {
-        setPhotoProgress(null);
-        setError(errorMsg);
+        if (importGeneration.current === gen) {
+          setPhotoProgress(null);
+          setError(errorMsg);
+        }
       }
     );
   }
@@ -147,6 +171,8 @@ export function AddRecipe({ path }: { path?: string }) {
   }
 
   function handleImportAnother() {
+    // Increment generation to ignore callbacks from previous import
+    importGeneration.current += 1;
     // Reset the form for another import (current import continues in background)
     setUrlInput("");
     setUrlProgress(null);
