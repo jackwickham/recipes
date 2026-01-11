@@ -70,6 +70,52 @@ importRouter.post("/photos", async (req, res, next) => {
   }
 });
 
+// POST /api/import/photos/stream - Import from photos with SSE progress
+importRouter.post("/photos/stream", async (req, res) => {
+  const { images } = req.body;
+
+  if (!Array.isArray(images) || images.length === 0) {
+    return res.status(400).json({ error: "At least one image is required" });
+  }
+
+  // Set SSE headers
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+
+  const sendEvent = (data: Record<string, unknown>) => {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  try {
+    const { extractedText, recipe } = await parseRecipeFromImages(
+      images,
+      (stage, message) => {
+        sendEvent({ stage, message });
+      }
+    );
+
+    sendEvent({
+      stage: "complete",
+      message: "Recipe imported successfully",
+      data: {
+        sourceType: "photo",
+        sourceText: extractedText,
+        sourceContext: null,
+        recipe,
+      },
+    });
+  } catch (err) {
+    sendEvent({
+      stage: "error",
+      message: err instanceof Error ? err.message : "Import failed",
+    });
+  }
+
+  res.end();
+});
+
 // POST /api/import/text - Import from pasted text
 importRouter.post("/text", async (req, res, next) => {
   try {

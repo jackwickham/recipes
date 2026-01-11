@@ -8,6 +8,7 @@ import type {
   hasVariants,
 } from "@recipes/shared";
 import { getLLM } from "./llm/index.js";
+import { ReasoningLevel } from "./llm/interface.js";
 
 const RECIPE_PARSE_PROMPT = `You are a recipe parsing assistant. Extract the recipe from the provided text and return it as valid JSON.
 
@@ -115,14 +116,16 @@ Return ONLY valid JSON in this exact format:
 User's recipe request:
 `;
 
-const IMAGE_EXTRACT_PROMPT = `Extract all text from this recipe image. Include:
+const IMAGE_EXTRACT_PROMPT = `Extract all text from these recipe images. The images may show different pages or sections of the same recipe.
+
+Include from ALL images:
 - Recipe title
 - Any description or introduction
 - All ingredients with quantities
 - All cooking steps/method
 - Any times, temperatures, or serving information
 
-Return the text as if you were transcribing the recipe from a cookbook. Include all details visible in the image.`;
+Return the text as if you were transcribing the complete recipe from a cookbook. Combine information from all images into a coherent recipe. Include all details visible in the images.`;
 
 function extractJsonFromResponse(response: string): unknown {
   // Extract JSON from response (handle markdown code blocks)
@@ -198,7 +201,7 @@ export async function generateScaledRecipe(
     recipeJson;
 
   const llm = getLLM();
-  const response = await llm.complete(prompt);
+  const response = await llm.complete(prompt, { reasoning: ReasoningLevel.LOW });
   const parsed = extractJsonFromResponse(response);
   return validateParsedRecipe(parsed);
 }
@@ -207,7 +210,9 @@ export async function generateRecipeFromPrompt(
   prompt: string
 ): Promise<ParsedRecipe> {
   const llm = getLLM();
-  const response = await llm.complete(RECIPE_GENERATE_PROMPT + prompt);
+  const response = await llm.complete(RECIPE_GENERATE_PROMPT + prompt, {
+    reasoning: ReasoningLevel.MEDIUM,
+  });
   const parsed = extractJsonFromResponse(response);
   const result = validateParsedRecipeResult(parsed);
 
@@ -222,28 +227,31 @@ export async function parseRecipeFromText(
   text: string
 ): Promise<ParsedRecipeResult> {
   const llm = getLLM();
-  const response = await llm.complete(RECIPE_PARSE_PROMPT + text);
+  const response = await llm.complete(RECIPE_PARSE_PROMPT + text, {
+    reasoning: ReasoningLevel.LOW,
+  });
   const parsed = extractJsonFromResponse(response);
   return validateParsedRecipeResult(parsed);
 }
 
-export async function extractTextFromImage(
-  imageBase64: string
-): Promise<string> {
-  const llm = getLLM();
-  return llm.completeWithImage(IMAGE_EXTRACT_PROMPT, imageBase64);
-}
+export type ProgressCallback = (stage: string, message: string) => void;
 
 export async function parseRecipeFromImages(
-  imagesBase64: string[]
+  imagesBase64: string[],
+  onProgress?: ProgressCallback
 ): Promise<{ extractedText: string; recipe: ParsedRecipeResult }> {
-  // Extract text from all images
-  const textParts = await Promise.all(
-    imagesBase64.map((img) => extractTextFromImage(img))
+  const llm = getLLM();
+
+  // Extract text from all images in a single LLM call
+  onProgress?.("extracting", `Extracting text from ${imagesBase64.length} image(s)...`);
+  const extractedText = await llm.completeWithImages(
+    IMAGE_EXTRACT_PROMPT,
+    imagesBase64,
+    { reasoning: ReasoningLevel.LOW }
   );
-  const extractedText = textParts.join("\n\n---\n\n");
 
   // Parse the combined text
+  onProgress?.("parsing", "Parsing recipe details...");
   const recipe = await parseRecipeFromText(extractedText);
 
   return { extractedText, recipe };

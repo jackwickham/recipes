@@ -5,9 +5,10 @@ import {
   createRecipe,
   createRecipeWithVariants,
   importFromUrl,
-  importFromPhotos,
+  importFromPhotosWithProgress,
   importFromText,
   type ImportResult,
+  type ImportProgress,
 } from "../api/client";
 import type {
   CreateRecipeInput,
@@ -39,6 +40,7 @@ export function AddRecipe({ path }: { path?: string }) {
 
   // Photo import state
   const [photos, setPhotos] = useState<string[]>([]);
+  const [photoProgress, setPhotoProgress] = useState<ImportProgress | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleSubmit(data: CreateRecipeInput) {
@@ -157,14 +159,18 @@ export function AddRecipe({ path }: { path?: string }) {
     }
 
     try {
-      setLoading(true);
       setError(null);
-      const result = await importFromPhotos(photos);
+      setPhotoProgress({ stage: "extracting", message: "Starting..." });
+
+      const result = await importFromPhotosWithProgress(photos, (progress) => {
+        setPhotoProgress(progress);
+      });
+
+      setPhotoProgress(null);
       handleImportResult(result);
     } catch (err) {
+      setPhotoProgress(null);
       setError(err instanceof Error ? err.message : "Failed to extract from photos");
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -239,65 +245,78 @@ export function AddRecipe({ path }: { path?: string }) {
 
   // Photo import
   if (mode === "photo") {
+    const isProcessing = photoProgress !== null;
+
     return (
       <div class="page">
         <header class="header">
-          <button class="btn" onClick={handleBack}>
-            Back
-          </button>
+          {!isProcessing && (
+            <button class="btn" onClick={handleBack}>
+              Back
+            </button>
+          )}
           <h1>Import from Photo</h1>
         </header>
         <main>
           {error && <p class="error">{error}</p>}
 
-          <div class="form-group">
-            <label>Photos</label>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handlePhotoSelect}
-              style="display: none"
-            />
-            <button
-              class="btn"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={loading}
-            >
-              Add Photos
-            </button>
-          </div>
+          {!isProcessing && (
+            <>
+              <div class="form-group">
+                <label>Photos</label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handlePhotoSelect}
+                  style="display: none"
+                />
+                <button
+                  class="btn"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  Add Photos
+                </button>
+              </div>
 
-          {photos.length > 0 && (
-            <div class="photo-grid">
-              {photos.map((photo, idx) => (
-                <div key={idx} class="photo-preview">
-                  <img src={photo} alt={`Photo ${idx + 1}`} />
-                  <button
-                    class="photo-remove"
-                    onClick={() => removePhoto(idx)}
-                    disabled={loading}
-                  >
-                    Remove
-                  </button>
+              {photos.length > 0 && (
+                <div class="photo-grid">
+                  {photos.map((photo, idx) => (
+                    <div key={idx} class="photo-preview">
+                      <img src={photo} alt={`Photo ${idx + 1}`} />
+                      <button
+                        class="photo-remove"
+                        onClick={() => removePhoto(idx)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
 
-          <div class="form-actions">
-            <button class="btn" onClick={handleBack} disabled={loading}>
-              Cancel
-            </button>
-            <button
-              class="btn btn-primary"
-              onClick={handleImportFromPhotos}
-              disabled={loading || photos.length === 0}
-            >
-              {loading ? "Extracting..." : "Extract Recipe"}
-            </button>
-          </div>
+          {isProcessing ? (
+            <div class="import-progress">
+              <div class="import-spinner" />
+              <div class="import-progress-message">{photoProgress.message}</div>
+            </div>
+          ) : (
+            <div class="form-actions">
+              <button class="btn" onClick={handleBack}>
+                Cancel
+              </button>
+              <button
+                class="btn btn-primary"
+                onClick={handleImportFromPhotos}
+                disabled={photos.length === 0}
+              >
+                Extract Recipe
+              </button>
+            </div>
+          )}
         </main>
       </div>
     );

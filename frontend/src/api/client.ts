@@ -94,6 +94,67 @@ export async function importFromPhotos(images: string[]): Promise<ImportResult> 
   });
 }
 
+export interface ImportProgress {
+  stage: "extracting" | "parsing" | "complete" | "error";
+  message: string;
+}
+
+export async function importFromPhotosWithProgress(
+  images: string[],
+  onProgress: (progress: ImportProgress) => void
+): Promise<ImportResult> {
+  const response = await fetch(`${API_BASE}/import/photos/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ images }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: response.statusText }));
+    throw new Error(error.error || "Request failed");
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new Error("No response body");
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+
+    // Parse SSE events from buffer
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+
+    for (const line of lines) {
+      if (line.startsWith("data: ")) {
+        const data = JSON.parse(line.slice(6));
+
+        onProgress({
+          stage: data.stage,
+          message: data.message,
+        });
+
+        if (data.stage === "complete") {
+          return data.data as ImportResult;
+        }
+
+        if (data.stage === "error") {
+          throw new Error(data.message || "Import failed");
+        }
+      }
+    }
+  }
+
+  throw new Error("Stream ended without completion");
+}
+
 export async function importFromText(text: string): Promise<ImportResult> {
   return request<ImportResult>("/import/text", {
     method: "POST",

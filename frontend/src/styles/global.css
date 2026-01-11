@@ -1876,3 +1876,33 @@ body {
     break-inside: avoid;
   }
 }
+
+/* Import progress indicator */
+.import-progress {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem;
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius);
+}
+
+.import-spinner {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.import-progress-message {
+  color: var(--color-text-secondary);
+  font-size: 0.9375rem;
+  text-align: center;
+}
