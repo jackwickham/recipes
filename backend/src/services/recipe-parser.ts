@@ -9,15 +9,19 @@ import type {
 } from "@recipes/shared";
 import { getLLM } from "./llm/index.js";
 import { ReasoningLevel } from "./llm/interface.js";
+import { getTagsForPrompt } from "../db/queries.js";
 
-const RECIPE_PARSE_PROMPT = `You are a recipe parsing assistant. Extract the recipe from the provided text and return it as valid JSON.
+function buildRecipeParsePrompt(existingTags: string[]): string {
+  const tagList = existingTags.join(", ");
+  return `You are a recipe parsing assistant. Extract the recipe from the provided text and return it as valid JSON.
 
 IMPORTANT RULES:
 1. Convert all measurements to metric units (grams, millilitres, celsius)
 2. Convert oven temperatures to fan oven (typically 20°C lower than conventional)
 3. Convert any American ingredient names to British English
 4. Mark timer durations with {{timer:M}} where M is minutes (e.g., {{timer:15}} for 15 minutes, {{timer:0.5}} for 30 seconds)
-5. Suggest appropriate tags from: pasta, indian, mexican, asian, mediterranean, british, american, main, side, dessert, snack, breakfast, quick, vegetarian, vegan, one-pot, make-ahead, soup, salad, baking
+5. Suggest appropriate tags. Use existing tags where applicable: ${tagList}
+   You may create new tags if existing tags aren't a good fit, but prefer existing tags for consistency.
 6. Steps that are doing several very different things should be split to one main action per step. For example, "add 500g of flour, then beat in 2 eggs" should stay as one step, but "add 500g of flour, and grease the baking tin" should be split up.
 7. MULTIPLE PORTION SIZES: If the recipe provides quantities for multiple serving sizes (e.g., "For 2 people: 200g flour, For 4 people: 400g flour"), you MUST extract ALL variants using the multi-variant format below.
 
@@ -83,8 +87,11 @@ For ingredients:
 
 Parse this recipe:
 `;
+}
 
-const RECIPE_GENERATE_PROMPT = `You are a creative recipe assistant. Generate a complete recipe based on the user's description.
+function buildRecipeGeneratePrompt(existingTags: string[]): string {
+  const tagList = existingTags.join(", ");
+  return `You are a creative recipe assistant. Generate a complete recipe based on the user's description.
 
 IMPORTANT RULES:
 1. Use metric units (grams, millilitres, celsius)
@@ -93,7 +100,8 @@ IMPORTANT RULES:
 4. Mark timer durations with {{timer:M}} where M is minutes (e.g., {{timer:15}} for 15 minutes, {{timer:0.5}} for 30 seconds)
 5. Create practical, delicious recipes that a home cook can make
 6. Be creative but realistic with ingredients and techniques
-7. Suggest appropriate tags
+7. Suggest appropriate tags. Use existing tags where applicable: ${tagList}
+   You may create new tags if existing tags aren't a good fit, but prefer existing tags for consistency.
 
 Return ONLY valid JSON in this exact format:
 {
@@ -115,6 +123,7 @@ Return ONLY valid JSON in this exact format:
 
 User's recipe request:
 `;
+}
 
 const IMAGE_EXTRACT_PROMPT = `Extract all text from these recipe images. The images may show different pages or sections of the same recipe.
 
@@ -201,7 +210,9 @@ export async function generateScaledRecipe(
     recipeJson;
 
   const llm = getLLM();
-  const response = await llm.complete(prompt, { reasoning: ReasoningLevel.LOW });
+  const response = await llm.complete(prompt, {
+    reasoning: ReasoningLevel.LOW,
+  });
   const parsed = extractJsonFromResponse(response);
   return validateParsedRecipe(parsed);
 }
@@ -209,10 +220,12 @@ export async function generateScaledRecipe(
 export async function generateRecipeFromPrompt(
   prompt: string
 ): Promise<ParsedRecipe> {
+  const existingTags = getTagsForPrompt();
   const llm = getLLM();
-  const response = await llm.complete(RECIPE_GENERATE_PROMPT + prompt, {
-    reasoning: ReasoningLevel.MEDIUM,
-  });
+  const response = await llm.complete(
+    buildRecipeGeneratePrompt(existingTags) + prompt,
+    { reasoning: ReasoningLevel.MEDIUM }
+  );
   const parsed = extractJsonFromResponse(response);
   const result = validateParsedRecipeResult(parsed);
 
@@ -226,10 +239,12 @@ export async function generateRecipeFromPrompt(
 export async function parseRecipeFromText(
   text: string
 ): Promise<ParsedRecipeResult> {
+  const existingTags = getTagsForPrompt();
   const llm = getLLM();
-  const response = await llm.complete(RECIPE_PARSE_PROMPT + text, {
-    reasoning: ReasoningLevel.LOW,
-  });
+  const response = await llm.complete(
+    buildRecipeParsePrompt(existingTags) + text,
+    { reasoning: ReasoningLevel.LOW }
+  );
   const parsed = extractJsonFromResponse(response);
   return validateParsedRecipeResult(parsed);
 }
@@ -243,7 +258,10 @@ export async function parseRecipeFromImages(
   const llm = getLLM();
 
   // Extract text from all images in a single LLM call
-  onProgress?.("extracting", `Extracting text from ${imagesBase64.length} image(s)...`);
+  onProgress?.(
+    "extracting",
+    `Extracting text from ${imagesBase64.length} image(s)...`
+  );
   const extractedText = await llm.completeWithImages(
     IMAGE_EXTRACT_PROMPT,
     imagesBase64,

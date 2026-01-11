@@ -369,7 +369,9 @@ function getPortionVariants(parentRecipeId: number): PortionVariantRef[] {
 }
 
 // Get portion variants including the parent recipe itself (for sibling lookup)
-function getPortionVariantsWithParent(parentRecipeId: number): PortionVariantRef[] {
+function getPortionVariantsWithParent(
+  parentRecipeId: number
+): PortionVariantRef[] {
   const db = getDb();
 
   // Get the parent's servings
@@ -382,7 +384,9 @@ function getPortionVariantsWithParent(parentRecipeId: number): PortionVariantRef
 
   // Include parent in the list if it has servings
   if (parent && parent.servings) {
-    return [parent, ...variants].sort((a, b) => (a.servings ?? 0) - (b.servings ?? 0));
+    return [parent, ...variants].sort(
+      (a, b) => (a.servings ?? 0) - (b.servings ?? 0)
+    );
   }
 
   return variants;
@@ -452,6 +456,42 @@ export function createRecipeWithPortionVariants(
 
 // Tag queries
 
+// Default tags to seed the database with - these represent common recipe categories
+export const DEFAULT_TAGS = [
+  // Cuisine types
+  "british",
+  "american",
+  "indian",
+  "mexican",
+  "asian",
+  "mediterranean",
+  "italian",
+  "french",
+  "middle-eastern",
+  "thai",
+  "chinese",
+  "japanese",
+  // Meal types
+  "breakfast",
+  "lunch",
+  "dinner",
+  "main",
+  "side",
+  "dessert",
+  "snack",
+  "starter",
+  // Dish types
+  "soup",
+  "salad",
+  "pasta",
+  "curry",
+  "stir-fry",
+  "roast",
+  "baking",
+  // Characteristics
+  "quick",
+];
+
 export function getAllTags(): string[] {
   const db = getDb();
   const result = db
@@ -463,4 +503,16 @@ export function getAllTags(): string[] {
     .all() as { tag: string }[];
 
   return result.map((r) => r.tag);
+}
+
+/**
+ * Get all existing tags, falling back to default tags if none exist.
+ * This is used for LLM prompts to encourage consistent tag usage.
+ */
+export function getTagsForPrompt(): string[] {
+  const existingTags = getAllTags();
+  if (existingTags.length > 0) {
+    return existingTags;
+  }
+  return DEFAULT_TAGS;
 }

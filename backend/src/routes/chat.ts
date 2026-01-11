@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getRecipeById } from "../db/queries.js";
+import { getRecipeById, getTagsForPrompt } from "../db/queries.js";
 import { getLLM } from "../services/llm/index.js";
 import type { ParsedRecipe } from "@recipes/shared";
 
@@ -37,7 +37,8 @@ chatRouter.post("/:id/chat", async (req, res) => {
     }
 
     // Build prompt with recipe context and provided history
-    const prompt = buildChatPrompt(recipe, chatHistory, message);
+    const existingTags = getTagsForPrompt();
+    const prompt = buildChatPrompt(recipe, chatHistory, message, existingTags);
 
     // Get LLM response
     const llm = getLLM();
@@ -61,8 +62,10 @@ chatRouter.post("/:id/chat", async (req, res) => {
 function buildChatPrompt(
   recipe: ReturnType<typeof getRecipeById>,
   history: ChatMessage[],
-  newMessage: string
+  newMessage: string,
+  existingTags: string[]
 ): string {
+  const tagList = existingTags.join(", ");
   const recipeJson = JSON.stringify(
     {
       id: recipe!.id,
@@ -96,6 +99,8 @@ When answering questions:
 1. Be helpful and conversational
 2. If the user asks for modifications (substitutions, dietary changes, content changes), provide the updated recipe
 3. Use British English and metric units
+4. When suggesting tags, prefer using existing tags: ${tagList}
+   You may create new tags if existing tags aren't a good fit, but prefer existing tags for consistency.
 
 PORTION VARIANTS:
 - If the user requests a different portion size (e.g., "make this for 6 people"), create a PORTION VARIANT
@@ -163,7 +168,9 @@ For CONTENT CHANGES (different ingredients/method):
   if (history.length > 0) {
     prompt += "\nConversation history:\n";
     for (const msg of history) {
-      prompt += `${msg.role === "user" ? "User" : "Assistant"}: ${msg.content}\n`;
+      prompt += `${msg.role === "user" ? "User" : "Assistant"}: ${
+        msg.content
+      }\n`;
     }
     prompt += "\n";
   }
@@ -207,9 +214,8 @@ function parseChatResponse(response: string): {
     recipes = recipes.map((recipe) => {
       // Handle missing or mismatched tags field
       // Some LLMs return "tags" instead of "suggestedTags"
-      const tags =
-        recipe.suggestedTags || (recipe as any).tags || [];
-        
+      const tags = recipe.suggestedTags || (recipe as any).tags || [];
+
       return {
         ...recipe,
         steps: recipe.steps.map((step) =>
