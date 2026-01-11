@@ -33,3 +33,19 @@ export function renderTimerMarkers(text: string): string {
 export function renderStepText(text: string): string {
   return renderTimerMarkers(text);
 }
+
+// Metric abbreviations written adjacent to the number (no space)
+const ADJACENT_UNITS = new Set(["g", "kg", "mg", "ml", "cl", "L", "l"]);
+
+// Format quantity with unit, adding space where appropriate
+// e.g., "500g", "1kg" vs "1 bunch", "2 tsp"
+export function formatQuantityWithUnit(
+  quantity: number | null,
+  unit: string | null
+): string {
+  if (quantity === null) return "";
+  const qty = quantity.toString().replace(/\.0$/, "");
+  if (!unit) return qty;
+  const space = ADJACENT_UNITS.has(unit) ? "" : " ";
+  return `${qty}${space}${unit}`;
+}

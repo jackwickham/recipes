@@ -21,6 +21,7 @@ import { useCookingList } from "../hooks/useCookingList";
 import {
   renderStepText,
   extractTimers,
+  formatQuantityWithUnit,
 } from "../utils/scaling";
 
 interface Props {
@@ -494,9 +495,7 @@ export function RecipeDetail({ id }: Props) {
                     onChange={() => toggleIngredient(ing.id)}
                   />
                   <span class="ingredient-quantity">
-                    {ing.quantity !== null
-                      ? `${ing.quantity.toString().replace(/\.0$/, "")}${ing.unit || ""}`
-                      : ""}
+                    {formatQuantityWithUnit(ing.quantity, ing.unit)}
                   </span>
                   <span class="ingredient-name">{ing.name}</span>
                   {ing.notes && (
