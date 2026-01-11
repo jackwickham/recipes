@@ -4,9 +4,9 @@ import { RecipeForm } from "../components/RecipeForm";
 import {
   createRecipe,
   createRecipeWithVariants,
-  importFromUrl,
+  importFromUrlWithProgress,
   importFromPhotosWithProgress,
-  importFromText,
+  importFromTextWithProgress,
   type ImportResult,
   type ImportProgress,
 } from "../api/client";
@@ -29,18 +29,21 @@ interface ImportState {
 export function AddRecipe({ path }: { path?: string }) {
   const [mode, setMode] = useState<Mode>("choose");
   const [importState, setImportState] = useState<ImportState | null>(null);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // URL import state
   const [urlInput, setUrlInput] = useState("");
+  const [urlProgress, setUrlProgress] = useState<ImportProgress | null>(null);
 
   // Text import state
   const [textInput, setTextInput] = useState("");
+  const [textProgress, setTextProgress] = useState<ImportProgress | null>(null);
 
   // Photo import state
   const [photos, setPhotos] = useState<string[]>([]);
-  const [photoProgress, setPhotoProgress] = useState<ImportProgress | null>(null);
+  const [photoProgress, setPhotoProgress] = useState<ImportProgress | null>(
+    null
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleSubmit(data: CreateRecipeInput) {
@@ -90,14 +93,23 @@ export function AddRecipe({ path }: { path?: string }) {
     }
 
     try {
-      setLoading(true);
       setError(null);
-      const result = await importFromUrl(urlInput.trim());
+      setUrlProgress({ stage: "fetching", message: "Starting..." });
+
+      const result = await importFromUrlWithProgress(
+        urlInput.trim(),
+        (progress) => {
+          setUrlProgress(progress);
+        }
+      );
+
+      setUrlProgress(null);
       handleImportResult(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to import from URL");
-    } finally {
-      setLoading(false);
+      setUrlProgress(null);
+      setError(
+        err instanceof Error ? err.message : "Failed to import from URL"
+      );
     }
   }
 
@@ -108,14 +120,21 @@ export function AddRecipe({ path }: { path?: string }) {
     }
 
     try {
-      setLoading(true);
       setError(null);
-      const result = await importFromText(textInput.trim());
+      setTextProgress({ stage: "parsing", message: "Starting..." });
+
+      const result = await importFromTextWithProgress(
+        textInput.trim(),
+        (progress) => {
+          setTextProgress(progress);
+        }
+      );
+
+      setTextProgress(null);
       handleImportResult(result);
     } catch (err) {
+      setTextProgress(null);
       setError(err instanceof Error ? err.message : "Failed to parse text");
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -324,41 +343,55 @@ export function AddRecipe({ path }: { path?: string }) {
 
   // URL import
   if (mode === "url") {
+    const isProcessing = urlProgress !== null;
+
     return (
       <div class="page">
         <header class="header">
-          <button class="btn" onClick={handleBack}>
-            Back
-          </button>
+          {!isProcessing && (
+            <button class="btn" onClick={handleBack}>
+              Back
+            </button>
+          )}
           <h1>Import from URL</h1>
         </header>
         <main>
           {error && <p class="error">{error}</p>}
 
-          <div class="form-group">
-            <label for="url-input">Recipe URL</label>
-            <input
-              id="url-input"
-              type="url"
-              value={urlInput}
-              onInput={(e) => setUrlInput(e.currentTarget.value)}
-              placeholder="https://example.com/recipe"
-              disabled={loading}
-            />
-          </div>
+          {!isProcessing && (
+            <>
+              <div class="form-group">
+                <label for="url-input">Recipe URL</label>
+                <input
+                  id="url-input"
+                  type="url"
+                  value={urlInput}
+                  onInput={(e) => setUrlInput(e.currentTarget.value)}
+                  placeholder="https://example.com/recipe"
+                />
+              </div>
 
-          <div class="form-actions">
-            <button class="btn" onClick={handleBack} disabled={loading}>
-              Cancel
-            </button>
-            <button
-              class="btn btn-primary"
-              onClick={handleImportFromUrl}
-              disabled={loading || !urlInput.trim()}
-            >
-              {loading ? "Importing..." : "Import Recipe"}
-            </button>
-          </div>
+              <div class="form-actions">
+                <button class="btn" onClick={handleBack}>
+                  Cancel
+                </button>
+                <button
+                  class="btn btn-primary"
+                  onClick={handleImportFromUrl}
+                  disabled={!urlInput.trim()}
+                >
+                  Import Recipe
+                </button>
+              </div>
+            </>
+          )}
+
+          {isProcessing && (
+            <div class="import-progress">
+              <div class="import-spinner" />
+              <div class="import-progress-message">{urlProgress.message}</div>
+            </div>
+          )}
         </main>
       </div>
     );
@@ -366,41 +399,55 @@ export function AddRecipe({ path }: { path?: string }) {
 
   // Text import
   if (mode === "text") {
+    const isProcessing = textProgress !== null;
+
     return (
       <div class="page">
         <header class="header">
-          <button class="btn" onClick={handleBack}>
-            Back
-          </button>
+          {!isProcessing && (
+            <button class="btn" onClick={handleBack}>
+              Back
+            </button>
+          )}
           <h1>Import from Text</h1>
         </header>
         <main>
           {error && <p class="error">{error}</p>}
 
-          <div class="form-group">
-            <label for="text-input">Paste recipe text</label>
-            <textarea
-              id="text-input"
-              value={textInput}
-              onInput={(e) => setTextInput(e.currentTarget.value)}
-              placeholder="Paste the recipe text here..."
-              rows={12}
-              disabled={loading}
-            />
-          </div>
+          {!isProcessing && (
+            <>
+              <div class="form-group">
+                <label for="text-input">Paste recipe text</label>
+                <textarea
+                  id="text-input"
+                  value={textInput}
+                  onInput={(e) => setTextInput(e.currentTarget.value)}
+                  placeholder="Paste the recipe text here..."
+                  rows={12}
+                />
+              </div>
 
-          <div class="form-actions">
-            <button class="btn" onClick={handleBack} disabled={loading}>
-              Cancel
-            </button>
-            <button
-              class="btn btn-primary"
-              onClick={handleImportFromText}
-              disabled={loading || !textInput.trim()}
-            >
-              {loading ? "Processing..." : "Process Recipe"}
-            </button>
-          </div>
+              <div class="form-actions">
+                <button class="btn" onClick={handleBack}>
+                  Cancel
+                </button>
+                <button
+                  class="btn btn-primary"
+                  onClick={handleImportFromText}
+                  disabled={!textInput.trim()}
+                >
+                  Process Recipe
+                </button>
+              </div>
+            </>
+          )}
+
+          {isProcessing && (
+            <div class="import-progress">
+              <div class="import-spinner" />
+              <div class="import-progress-message">{textProgress.message}</div>
+            </div>
+          )}
         </main>
       </div>
     );

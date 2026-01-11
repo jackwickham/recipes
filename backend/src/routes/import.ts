@@ -46,6 +46,67 @@ importRouter.post("/url", async (req, res, next) => {
   }
 });
 
+// POST /api/import/url/stream - Import from URL with SSE progress
+importRouter.post("/url/stream", async (req, res) => {
+  const { url } = req.body;
+
+  if (!url || typeof url !== "string") {
+    return res.status(400).json({ error: "URL is required" });
+  }
+
+  // Set SSE headers
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+
+  const sendEvent = (data: Record<string, unknown>) => {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  try {
+    sendEvent({ stage: "fetching", message: "Fetching recipe page..." });
+
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (compatible; RecipeBot/1.0; +http://localhost)",
+        Accept: "text/html,application/xhtml+xml",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch URL: ${response.statusText}`);
+    }
+
+    const html = await response.text();
+    const { extractedText, recipe } = await parseRecipeFromUrl(
+      html,
+      (stage, message) => {
+        sendEvent({ stage, message });
+      }
+    );
+
+    sendEvent({
+      stage: "complete",
+      message: "Recipe imported successfully",
+      data: {
+        sourceType: "url",
+        sourceText: extractedText,
+        sourceContext: url,
+        recipe,
+      },
+    });
+  } catch (err) {
+    sendEvent({
+      stage: "error",
+      message: err instanceof Error ? err.message : "Import failed",
+    });
+  }
+
+  res.end();
+});
+
 // POST /api/import/photos - Import from photos
 importRouter.post("/photos", async (req, res, next) => {
   try {
@@ -136,6 +197,49 @@ importRouter.post("/text", async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+// POST /api/import/text/stream - Import from pasted text with SSE progress
+importRouter.post("/text/stream", async (req, res) => {
+  const { text } = req.body;
+
+  if (!text || typeof text !== "string") {
+    return res.status(400).json({ error: "Text is required" });
+  }
+
+  // Set SSE headers
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+
+  const sendEvent = (data: Record<string, unknown>) => {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  try {
+    const recipe = await parseRecipeFromText(text, (stage, message) => {
+      sendEvent({ stage, message });
+    });
+
+    sendEvent({
+      stage: "complete",
+      message: "Recipe processed successfully",
+      data: {
+        sourceType: "text",
+        sourceText: text,
+        sourceContext: null,
+        recipe,
+      },
+    });
+  } catch (err) {
+    sendEvent({
+      stage: "error",
+      message: err instanceof Error ? err.message : "Processing failed",
+    });
+  }
+
+  res.end();
 });
 
 // POST /api/import/parse - Re-parse raw source text

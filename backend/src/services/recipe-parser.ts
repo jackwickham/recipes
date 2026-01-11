@@ -237,8 +237,10 @@ export async function generateRecipeFromPrompt(
 }
 
 export async function parseRecipeFromText(
-  text: string
+  text: string,
+  onProgress?: ProgressCallback
 ): Promise<ParsedRecipeResult> {
+  onProgress?.("parsing", "Parsing recipe details...");
   const existingTags = getTagsForPrompt();
   const llm = getLLM();
   const response = await llm.complete(
@@ -276,10 +278,11 @@ export async function parseRecipeFromImages(
 }
 
 export async function parseRecipeFromUrl(
-  html: string
+  html: string,
+  onProgress?: ProgressCallback
 ): Promise<{ extractedText: string; recipe: ParsedRecipeResult }> {
   // The HTML itself becomes the source text
-  const recipe = await parseRecipeFromText(html);
+  const recipe = await parseRecipeFromText(html, onProgress);
   return { extractedText: html, recipe };
 }
 
