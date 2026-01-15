@@ -10,7 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@google/genai": "^1.35.0",
+    "@google/genai": "^1.36.0",
     "@recipes/shared": "*",
     "better-sqlite3": "^12.6.0",
     "express": "^5.2.1",
