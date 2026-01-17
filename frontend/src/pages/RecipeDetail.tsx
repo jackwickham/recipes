@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "preact/hooks";
 import { route } from "preact-router";
+import Fuse from "fuse.js";
 import type { RecipeWithDetails, ParsedRecipe } from "@recipes/shared";
 import {
   getRecipe,
@@ -23,6 +24,7 @@ import {
   extractTimers,
   formatQuantityWithUnit,
 } from "../utils/scaling";
+import { useFilters } from "../contexts/FilterContext";
 
 interface Props {
   id?: string;
@@ -69,6 +71,12 @@ export function RecipeDetail({ id }: Props) {
   const { timers, startTimer, stopTimer, resetTimer, getTimer } = useTimer();
   const wakeLock = useWakeLock();
   const cookingList = useCookingList();
+  const {
+    searchQuery,
+    ratingFilter,
+    selectedTags,
+    ingredientFilter,
+  } = useFilters();
 
   useEffect(() => {
     loadRecipe();
@@ -302,9 +310,56 @@ export function RecipeDetail({ id }: Props) {
   async function handleSurpriseMe() {
     try {
       const allRecipes = await getRecipes();
-      const candidates = allRecipes.filter(
+
+      // Start with non-variants and exclude current recipe
+      let candidates = allRecipes.filter(
         (r) => r.parentRecipeId === null && r.id !== recipe?.id
       );
+
+      // Apply filters from context (same logic as Home.tsx)
+
+      // Fuzzy search
+      if (searchQuery.trim()) {
+        const fuse = new Fuse(candidates, {
+          keys: [
+            { name: "title", weight: 2 },
+            { name: "description", weight: 1 },
+            { name: "ingredients.name", weight: 1.5 },
+            { name: "tags.tag", weight: 1 },
+          ],
+          threshold: 0.4,
+          includeScore: true,
+        });
+        const searchResults = fuse.search(searchQuery.trim());
+        candidates = searchResults.map((r) => r.item);
+      }
+
+      // Rating filter
+      if (ratingFilter !== "all") {
+        candidates = candidates.filter((r) => {
+          if (ratingFilter === "great") return r.rating === "great";
+          if (ratingFilter === "good+")
+            return r.rating === "good" || r.rating === "great";
+          return true;
+        });
+      }
+
+      // Tag filter (AND logic - recipe must have ALL selected tags)
+      if (selectedTags.size > 0) {
+        candidates = candidates.filter((r) => {
+          const recipeTags = new Set(r.tags.map((t) => t.tag));
+          return Array.from(selectedTags).every((tag) => recipeTags.has(tag));
+        });
+      }
+
+      // Ingredient filter
+      if (ingredientFilter.trim()) {
+        const query = ingredientFilter.trim().toLowerCase();
+        candidates = candidates.filter((r) =>
+          r.ingredients.some((ing) => ing.name.toLowerCase().includes(query))
+        );
+      }
+
       if (candidates.length > 0) {
         const random = candidates[Math.floor(Math.random() * candidates.length)];
         route(`/recipe/${random.id}`);

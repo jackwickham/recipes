@@ -6,8 +6,7 @@ import { getRecipes, getTags } from "../api/client";
 import { RecipeCard } from "../components/RecipeCard";
 import { RecipeGenerator } from "../components/RecipeGenerator";
 import { useCookingList } from "../hooks/useCookingList";
-
-type RatingFilter = "all" | "good+" | "great";
+import { useFilters } from "../contexts/FilterContext";
 
 function shuffleArray<T>(array: T[]): T[] {
   const shuffled = [...array];
@@ -25,13 +24,20 @@ export function Home({ path }: { path?: string }) {
   const [error, setError] = useState<string | null>(null);
   const cookingList = useCookingList();
 
-  // Filter state
-  const [searchQuery, setSearchQuery] = useState("");
-  const [ratingFilter, setRatingFilter] = useState<RatingFilter>("all");
-  const [selectedTags, setSelectedTags] = useState<Set<string>>(
-    new Set(["main"])
-  );
-  const [ingredientFilter, setIngredientFilter] = useState("");
+  // Use filter context instead of local state
+  const {
+    searchQuery,
+    ratingFilter,
+    selectedTags,
+    ingredientFilter,
+    setSearchQuery,
+    setRatingFilter,
+    toggleTag,
+    setIngredientFilter,
+    clearFilters,
+    hasActiveFilters,
+  } = useFilters();
+
   const [showTagFilter, setShowTagFilter] = useState(false);
   const tagFilterRef = useRef<HTMLDivElement>(null);
 
@@ -154,31 +160,6 @@ export function Home({ path }: { path?: string }) {
     const randomRecipe = filteredRecipes[randomIndex];
     route(`/recipe/${randomRecipe.id}`);
   }
-
-  function toggleTag(tag: string) {
-    setSelectedTags((prev) => {
-      const next = new Set(prev);
-      if (next.has(tag)) {
-        next.delete(tag);
-      } else {
-        next.add(tag);
-      }
-      return next;
-    });
-  }
-
-  function clearFilters() {
-    setSearchQuery("");
-    setRatingFilter("all");
-    setSelectedTags(new Set());
-    setIngredientFilter("");
-  }
-
-  const hasActiveFilters =
-    searchQuery ||
-    ratingFilter !== "all" ||
-    selectedTags.size > 0 ||
-    ingredientFilter;
 
   return (
     <div class="page">
