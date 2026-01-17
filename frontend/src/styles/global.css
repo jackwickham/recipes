@@ -1385,10 +1385,6 @@ body {
   overflow: hidden; /* Ensure children don't push the modal height */
 }
 
-.chat-modal.has-preview {
-  height: 95vh; /* Force full height when previewing to maximize space */
-}
-
 .chat-header {
   display: flex;
   align-items: center;
@@ -1791,7 +1787,7 @@ body {
 
   /* Chat modal */
   .chat-modal {
-    max-height: 90vh;
+    max-height: calc(100vh - 2.5vw);
     border-radius: var(--radius) var(--radius) 0 0;
   }
 
