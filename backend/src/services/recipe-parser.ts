@@ -11,7 +11,7 @@ import { getLLM } from "./llm/index.js";
 import { ReasoningLevel } from "./llm/interface.js";
 import { getTagsForPrompt } from "../db/queries.js";
 
-function buildRecipeParsePrompt(existingTags: string[]): string {
+function buildRecipeParseSystemPrompt(existingTags: string[]): string {
   const tagList = existingTags.join(", ");
   return `You are a recipe parsing assistant. Extract the recipe from the provided text and return it as valid JSON.
 
@@ -83,13 +83,10 @@ IMPORTANT: Use multi-variant format ONLY when the source recipe explicitly provi
 For ingredients:
 - quantity should be a number or null (for "to taste", "a pinch", etc.)
 - unit should be "g", "ml", "tsp", "tbsp", or null for countable items like "2 eggs"
-- notes are optional (for prep instructions like "diced", "room temperature")
-
-Parse this recipe:
-`;
+- notes are optional (for prep instructions like "diced", "room temperature")`;
 }
 
-function buildRecipeGeneratePrompt(existingTags: string[]): string {
+function buildRecipeGenerateSystemPrompt(existingTags: string[]): string {
   const tagList = existingTags.join(", ");
   return `You are a creative recipe assistant. Generate a complete recipe based on the user's description.
 
@@ -119,10 +116,7 @@ Return ONLY valid JSON in this exact format:
     {"instruction": "Beat 3 eggs and mix in. Cook for {{timer:5}}."}
   ],
   "suggestedTags": ["main", "quick", "vegetarian"]
-}
-
-User's recipe request:
-`;
+}`;
 }
 
 const IMAGE_EXTRACT_PROMPT = `Extract all text from these recipe images. The images may show different pages or sections of the same recipe.
@@ -156,7 +150,8 @@ function extractJsonFromResponse(response: string): unknown {
   }
 }
 
-const SCALE_RECIPE_PROMPT = `You are a precise kitchen assistant. Scale the following recipe to {{servings}} servings.
+function buildScaleRecipeSystemPrompt(targetServings: number): string {
+  return `You are a precise kitchen assistant. Scale the following recipe to ${targetServings} servings.
 
 IMPORTANT RULES:
 1. Scale ingredient quantities based on the ratio between new and old servings. Use judgement to decide whether a given item should be scaled or not, and appropriate rounding for that scaling.
@@ -168,7 +163,7 @@ Return ONLY valid JSON in this exact format:
 {
   "title": "Recipe Title",
   "description": "Brief description",
-  "servings": {{servings}},
+  "servings": ${targetServings},
   "prepTimeMinutes": 15,
   "cookTimeMinutes": 30,
   "ingredients": [
@@ -178,10 +173,8 @@ Return ONLY valid JSON in this exact format:
     {"instruction": "Add 500g flour..."}
   ],
   "suggestedTags": ["tag1", "tag2"]
+}`;
 }
-
-Original Recipe:
-`;
 
 export async function generateScaledRecipe(
   recipe: any, // Using any to avoid circular dependency on RecipeWithDetails if not available in this file context
@@ -202,28 +195,24 @@ export async function generateScaledRecipe(
     2
   );
 
-  const prompt =
-    SCALE_RECIPE_PROMPT.replace(
-      "{{servings}}",
-      targetServings.toString()
-    ).replace("{{servings}}", targetServings.toString()) + // Replace second occurrence in JSON example
-    recipeJson;
-
   const llm = getLLM();
-  const response = await llm.complete(prompt, {
-    reasoning: ReasoningLevel.LOW,
-  });
+  const response = await llm.completeChat(
+    buildScaleRecipeSystemPrompt(targetServings),
+    [{ role: "user", content: recipeJson }],
+    { reasoning: ReasoningLevel.LOW }
+  );
   const parsed = extractJsonFromResponse(response);
   return validateParsedRecipe(parsed);
 }
 
 export async function generateRecipeFromPrompt(
-  prompt: string
+  userPrompt: string
 ): Promise<ParsedRecipe> {
   const existingTags = getTagsForPrompt();
   const llm = getLLM();
-  const response = await llm.complete(
-    buildRecipeGeneratePrompt(existingTags) + prompt,
+  const response = await llm.completeChat(
+    buildRecipeGenerateSystemPrompt(existingTags),
+    [{ role: "user", content: userPrompt }],
     { reasoning: ReasoningLevel.MEDIUM }
   );
   const parsed = extractJsonFromResponse(response);
@@ -243,8 +232,9 @@ export async function parseRecipeFromText(
   onProgress?.("parsing", "Parsing recipe details...");
   const existingTags = getTagsForPrompt();
   const llm = getLLM();
-  const response = await llm.complete(
-    buildRecipeParsePrompt(existingTags) + text,
+  const response = await llm.completeChat(
+    buildRecipeParseSystemPrompt(existingTags),
+    [{ role: "user", content: text }],
     { reasoning: ReasoningLevel.LOW }
   );
   const parsed = extractJsonFromResponse(response);

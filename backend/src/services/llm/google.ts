@@ -1,5 +1,5 @@
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
-import { type LLM, type LLMOptions, ReasoningLevel } from "./interface.js";
+import { type LLM, type LLMOptions, type Message, ReasoningLevel } from "./interface.js";
 
 export class GoogleLLM implements LLM {
   private client: GoogleGenAI;
@@ -79,6 +79,27 @@ export class GoogleLLM implements LLM {
       model: this.textModel,
       contents: prompt,
       config: this.getConfig(this.textModel, options),
+    });
+    return response.text ?? "";
+  }
+
+  async completeChat(
+    systemPrompt: string,
+    messages: Message[],
+    options?: LLMOptions
+  ): Promise<string> {
+    const contents = messages.map((msg) => ({
+      role: msg.role === "assistant" ? "model" : "user",
+      parts: [{ text: msg.content }],
+    }));
+
+    const response = await this.client.models.generateContent({
+      model: this.textModel,
+      contents,
+      config: {
+        ...this.getConfig(this.textModel, options),
+        systemInstruction: systemPrompt,
+      },
     });
     return response.text ?? "";
   }

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { getRecipeById, getTagsForPrompt } from "../db/queries.js";
 import { getLLM } from "../services/llm/index.js";
+import type { Message } from "../services/llm/interface.js";
 import type { ParsedRecipe } from "@recipes/shared";
 
 export const chatRouter = Router();
@@ -36,13 +37,20 @@ chatRouter.post("/:id/chat", async (req, res) => {
       return;
     }
 
-    // Build prompt with recipe context and provided history
+    // Build system prompt and messages
     const existingTags = getTagsForPrompt();
-    const prompt = buildChatPrompt(recipe, chatHistory, message, existingTags);
+    const systemPrompt = buildChatSystemPrompt(recipe, existingTags);
+
+    // Convert chat history to LLM messages and add current message
+    const messages: Message[] = chatHistory.map((msg) => ({
+      role: msg.role,
+      content: msg.content,
+    }));
+    messages.push({ role: "user", content: message });
 
     // Get LLM response
     const llm = getLLM();
-    const response = await llm.complete(prompt);
+    const response = await llm.completeChat(systemPrompt, messages);
 
     // Parse response
     const { text, updatedRecipes } = parseChatResponse(response);
@@ -59,10 +67,8 @@ chatRouter.post("/:id/chat", async (req, res) => {
   }
 });
 
-function buildChatPrompt(
+function buildChatSystemPrompt(
   recipe: ReturnType<typeof getRecipeById>,
-  history: ChatMessage[],
-  newMessage: string,
   existingTags: string[]
 ): string {
   const tagList = existingTags.join(", ");
@@ -91,7 +97,7 @@ function buildChatPrompt(
     2
   );
 
-  let prompt = `You are a helpful cooking assistant. You have access to the following recipe:
+  return `You are a helpful cooking assistant. You have access to the following recipe:
 
 ${recipeJson}
 
@@ -160,25 +166,7 @@ For CONTENT CHANGES (different ingredients/method):
       "suggestedTags": ["vegetarian"]
     }
   ]
-}
-
-`;
-
-  // Add conversation history
-  if (history.length > 0) {
-    prompt += "\nConversation history:\n";
-    for (const msg of history) {
-      prompt += `${msg.role === "user" ? "User" : "Assistant"}: ${
-        msg.content
-      }\n`;
-    }
-    prompt += "\n";
-  }
-
-  // Add current message
-  prompt += `User: ${newMessage}\n\nRespond with valid JSON:`;
-
-  return prompt;
+}`;
 }
 
 function parseChatResponse(response: string): {
