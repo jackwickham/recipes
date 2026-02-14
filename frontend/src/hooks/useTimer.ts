@@ -11,14 +11,13 @@ export interface Timer {
 export function useTimer() {
   const [timers, setTimers] = useState<Map<string, Timer>>(new Map());
   const intervalsRef = useRef<Map<string, number>>(new Map());
+  const deadlinesRef = useRef<Map<string, number>>(new Map());
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Create audio element for alerts
   useEffect(() => {
-    // Create a simple beep using Web Audio API
     audioRef.current = new Audio("/timer.mp3");
     return () => {
-      // Clean up intervals on unmount
       intervalsRef.current.forEach((intervalId) => clearInterval(intervalId));
     };
   }, []);
@@ -26,15 +25,17 @@ export function useTimer() {
   const startTimer = useCallback((id: string, minutes: number) => {
     const totalSeconds = Math.round(minutes * 60);
 
+    // Determine remaining seconds from existing timer or use total
+    let remainingForDeadline = totalSeconds;
     setTimers((prev) => {
       const existing = prev.get(id);
       const next = new Map(prev);
 
-      // If timer exists and isn't complete, keep its current remaining time
       const remainingSeconds =
         existing && !existing.isComplete
           ? existing.remainingSeconds
           : totalSeconds;
+      remainingForDeadline = remainingSeconds;
 
       next.set(id, {
         id,
@@ -46,14 +47,25 @@ export function useTimer() {
       return next;
     });
 
+    // Set wall-clock deadline for accurate tracking
+    deadlinesRef.current.set(id, Date.now() + remainingForDeadline * 1000);
+
     // Clear existing interval if any
     const existingInterval = intervalsRef.current.get(id);
     if (existingInterval) {
       clearInterval(existingInterval);
     }
 
-    // Start countdown
+    // Start countdown using wall-clock time
     const intervalId = window.setInterval(() => {
+      const deadline = deadlinesRef.current.get(id);
+      if (deadline === undefined) {
+        clearInterval(intervalId);
+        return;
+      }
+
+      const newRemaining = Math.ceil((deadline - Date.now()) / 1000);
+
       setTimers((prev) => {
         const timer = prev.get(id);
         if (!timer || !timer.isRunning) {
@@ -61,11 +73,10 @@ export function useTimer() {
           return prev;
         }
 
-        const newRemaining = timer.remainingSeconds - 1;
-
         if (newRemaining <= 0) {
           clearInterval(intervalId);
           intervalsRef.current.delete(id);
+          deadlinesRef.current.delete(id);
 
           // Play alert sound
           if (audioRef.current) {
@@ -98,12 +109,24 @@ export function useTimer() {
       intervalsRef.current.delete(id);
     }
 
+    // Compute accurate remaining from wall clock before clearing deadline
+    const deadline = deadlinesRef.current.get(id);
+    const accurateRemaining =
+      deadline !== undefined
+        ? Math.max(0, Math.ceil((deadline - Date.now()) / 1000))
+        : undefined;
+    deadlinesRef.current.delete(id);
+
     setTimers((prev) => {
       const timer = prev.get(id);
       if (!timer) return prev;
 
       const next = new Map(prev);
-      next.set(id, { ...timer, isRunning: false });
+      next.set(id, {
+        ...timer,
+        remainingSeconds: accurateRemaining ?? timer.remainingSeconds,
+        isRunning: false,
+      });
       return next;
     });
   }, []);
@@ -114,6 +137,7 @@ export function useTimer() {
       clearInterval(intervalId);
       intervalsRef.current.delete(id);
     }
+    deadlinesRef.current.delete(id);
 
     setTimers((prev) => {
       const next = new Map(prev);
