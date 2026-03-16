@@ -12,7 +12,7 @@
   "dependencies": {
     "@google/genai": "^1.45.0",
     "@recipes/shared": "*",
-    "better-sqlite3": "^12.6.2",
+    "better-sqlite3": "^12.8.0",
     "express": "^5.2.1",
     "yaml": "^2.3.4"
   },
