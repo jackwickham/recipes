@@ -14,7 +14,7 @@
     "@recipes/shared": "*",
     "better-sqlite3": "^12.8.0",
     "express": "^5.2.1",
-    "yaml": "^2.3.4"
+    "yaml": "^2.8.3"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.8",
