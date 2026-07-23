@@ -8,7 +8,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@preact/signals": "^2.9.4",
+    "@preact/signals": "^2.10.0",
     "@recipes/shared": "*",
     "fuse.js": "^7.5.0",
     "preact": "^10.29.7",
