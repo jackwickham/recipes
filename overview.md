@@ -18,7 +18,7 @@ A personal recipe web app with LLM-powered import, quantity scaling, and cooking
 ### Prerequisites
 
 - Node.js 20+
-- A Google API key with access to Gemini models
+- An API key for one of the supported LLM providers: Google (Gemini) or OpenAI (GPT-5.6)
 
 ### Development
 
@@ -30,7 +30,7 @@ npm install
 cp config.example.yml config.yml
 cp secrets.example.yml secrets.yml
 
-# Edit secrets.yml to add your Google API key
+# Edit secrets.yml to add your provider API key
 
 # Start development servers (frontend + backend)
 npm run dev
@@ -65,16 +65,31 @@ database:
   path: ./data/recipes.db
 
 llm:
-  provider: google
+  provider: google                  # google | openai
   textModel: gemini-2.0-flash       # For recipe parsing and chat
   imageModel: gemini-2.0-flash      # For photo OCR
 ```
 
+#### LLM providers
+
+| Provider | Models |
+| --- | --- |
+| `google` | Any Gemini model, e.g. `gemini-3-flash-preview`, `gemini-3-pro-image-preview` |
+| `openai` | `gpt-5.6-sol` (flagship), `gpt-5.6-terra` (balanced), `gpt-5.6-luna` (cost-optimised). All three accept text and images. |
+
+If `textModel`/`imageModel` are omitted they default to the provider's defaults
+(`gemini-3-flash-preview`/`gemini-3-pro-image-preview` for Google, `gpt-5.6-terra` for OpenAI).
+
 ### secrets.yml
+
+Only the key for the configured provider is required.
 
 ```yaml
 google:
   apiKey: your-google-api-key-here
+
+openai:
+  apiKey: your-openai-api-key-here
 ```
 
 Set the `SECRETS_FILE` environment variable to specify a custom path (defaults to `./secrets.yml`).
@@ -85,7 +100,7 @@ Set the `SECRETS_FILE` environment variable to specify a custom path (defaults t
 
 - **Backend**: TypeScript, Express, SQLite (better-sqlite3)
 - **Frontend**: TypeScript, Preact, Vite
-- **LLM**: Google Gemini via @google/genai SDK
+- **LLM**: Google Gemini via @google/genai SDK, or OpenAI GPT-5.6 via the `openai` SDK (Responses API)
 - **Search**: Fuse.js for client-side fuzzy matching
 
 ### Key Design Decisions

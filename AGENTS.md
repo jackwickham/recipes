@@ -57,7 +57,7 @@ When a recipe source provides exact quantities for multiple serving sizes (e.g.,
 
 ## Configuration
 
-- `config.yml` - Database path, LLM models (loaded from fixed path `./config.yml`)
+- `config.yml` - Database path, LLM provider (`google` or `openai`) and models (loaded from fixed path `./config.yml`)
 - `secrets.yml` - API keys (path via `SECRETS_FILE` env var, defaults to `./secrets.yml`)
 - See `config.example.yml` and `secrets.example.yml` for format
 

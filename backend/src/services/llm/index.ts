@@ -1,5 +1,6 @@
 import type { LLM } from "./interface.js";
 import { GoogleLLM } from "./google.js";
+import { OpenAILLM } from "./openai.js";
 import { loadConfig, loadSecrets } from "../config.js";
 
 export type { LLM } from "./interface.js";
@@ -19,6 +20,18 @@ export function getLLM(): LLM {
         );
       }
       llmInstance = new GoogleLLM(
+        apiKey,
+        config.llm.textModel,
+        config.llm.imageModel
+      );
+    } else if (config.llm.provider === "openai") {
+      const apiKey = secrets.openai?.apiKey;
+      if (!apiKey) {
+        throw new Error(
+          "OpenAI API key not found. Set it in your secrets file."
+        );
+      }
+      llmInstance = new OpenAILLM(
         apiKey,
         config.llm.textModel,
         config.llm.imageModel

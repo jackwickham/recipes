@@ -7,19 +7,35 @@ export interface Config {
     path: string;
   };
   llm: {
-    provider: "google";
+    provider: LLMProvider;
     textModel: string;
     imageModel: string;
   };
 }
 
+export type LLMProvider = "google" | "openai";
+
 export interface Secrets {
   google?: {
+    apiKey: string;
+  };
+  openai?: {
     apiKey: string;
   };
 }
 
 const CONFIG_PATH = "./config.yml";
+
+const DEFAULT_MODELS: Record<LLMProvider, { textModel: string; imageModel: string }> = {
+  google: {
+    textModel: "gemini-3-flash-preview",
+    imageModel: "gemini-3-pro-image-preview",
+  },
+  openai: {
+    textModel: "gpt-5.6-terra",
+    imageModel: "gpt-5.6-terra",
+  },
+};
 
 export function loadConfig(): Config {
   if (!existsSync(CONFIG_PATH)) {
@@ -31,14 +47,20 @@ export function loadConfig(): Config {
       },
       llm: {
         provider: "google",
-        textModel: "gemini-3-flash-preview",
-        imageModel: "gemini-3-pro-image-preview",
+        ...DEFAULT_MODELS.google,
       },
     };
   }
 
   const content = readFileSync(CONFIG_PATH, "utf-8");
   const parsed = parse(content) as Partial<Config>;
+  const provider = parsed.llm?.provider ?? "google";
+
+  if (!(provider in DEFAULT_MODELS)) {
+    throw new Error(
+      `Unknown LLM provider "${provider}". Supported providers: ${Object.keys(DEFAULT_MODELS).join(", ")}`
+    );
+  }
 
   return {
     port: parsed.port ?? 3000,
@@ -46,9 +68,9 @@ export function loadConfig(): Config {
       path: process.env.DATABASE_PATH ?? parsed.database?.path ?? "./data/recipes.db",
     },
     llm: {
-      provider: parsed.llm?.provider ?? "google",
-      textModel: parsed.llm?.textModel ?? "gemini-3-flash-preview",
-      imageModel: parsed.llm?.imageModel ?? "gemini-3-pro-image-preview",
+      provider,
+      textModel: parsed.llm?.textModel ?? DEFAULT_MODELS[provider].textModel,
+      imageModel: parsed.llm?.imageModel ?? DEFAULT_MODELS[provider].imageModel,
     },
   };
 }
