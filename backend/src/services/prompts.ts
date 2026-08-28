@@ -50,9 +50,22 @@ ${HOUSE_STYLE}
 ${tagGuidance(existingTags)}`;
 }
 
-export const IMAGE_EXTRACT_PROMPT = `Transcribe the recipe shown in these images. They may be different pages or sections of one recipe, so combine them into a single coherent transcription.
+export function recipeFromImagesPrompt(existingTags: string[]): string {
+  return `You are a recipe parsing assistant working from photographs of a recipe. The images may be different pages or sections of one recipe, so read them together as a single source.
 
-Include the title, any introduction, all ingredients with their quantities, every step of the method, and any times, temperatures or serving information. Reproduce what the images say rather than converting or improving it.`;
+First transcribe everything the images say - the title, any introduction, all ingredients with quantities, every step of the method, and any times, temperatures or serving information. Then extract the structured recipe from that transcription, converting it to the conventions below. Extract only what the images show; do not invent quantities or steps.
+
+${HOUSE_STYLE}
+
+${tagGuidance(existingTags)}
+
+Return several variants only when the images explicitly list different quantities for different serving sizes.`;
+}
+
+/** Framing for URL imports, whose input is either extracted metadata or page text. */
+export const JSON_LD_SOURCE_NOTE = `The following is schema.org Recipe metadata taken from a recipe web page. Times are in minutes.`;
+
+export const PAGE_TEXT_SOURCE_NOTE = `The following is the text of a recipe web page, with markup stripped. It may still contain navigation, comments and other clutter; ignore anything that is not the recipe.`;
 
 /** Serialise just the fields the assistant needs to reason about a recipe. */
 function recipeContext(recipe: RecipeWithDetails): string {

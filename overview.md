@@ -112,9 +112,13 @@ Set the `SECRETS_FILE` environment variable to specify a custom path (defaults t
    calling rather than a JSON envelope, so conversational answers stay plain prose
 3. **No authentication** - Personal use only, run on local network or behind auth proxy
 4. **Synchronous SQLite** - Simpler code, adequate for single-user scenario
-5. **No photo storage** - Photos processed by vision LLM, only extracted text stored
-6. **Client-side filtering** - All recipes loaded at once, filtered in browser
-7. **Local Storage for User State** - Chat history and cooking lists are stored in the browser, keeping the backend stateless and simple
+5. **No photo storage** - Photos processed by vision LLM in a single call, only the
+   transcription stored
+6. **Recipes extracted before the LLM sees them** - URL imports read schema.org/Recipe
+   JSON-LD where a site publishes it and fall back to stripped page text, so the model
+   receives a few kilobytes of recipe rather than a few hundred of markup
+7. **Client-side filtering** - All recipes loaded at once, filtered in browser
+8. **Local Storage for User State** - Chat history and cooking lists are stored in the browser, keeping the backend stateless and simple
 
 ---
 
@@ -196,6 +200,7 @@ recipes/
 │       ├── services/
 │       │   ├── llm/              # LLM interface and providers
 │       │   ├── prompts.ts        # Composed prompt fragments
+│       │   ├── source-extract.ts # JSON-LD / page text extraction for URL import
 │       │   ├── recipe-parser.ts  # Structured extraction/generation calls
 │       │   └── config.ts         # YAML config loading
 │       └── db/

@@ -11,6 +11,8 @@ import {
 } from "../src/services/llm/interface.js";
 import {
   parseRecipeFromText,
+  parseRecipeFromImages,
+  parseRecipeFromUrl,
   generateRecipeFromPrompt,
 } from "../src/services/recipe-parser.js";
 import { hasVariants } from "@recipes/shared";
@@ -142,6 +144,78 @@ describe("structured recipe parsing", () => {
     await expect(generateRecipeFromPrompt("a pie")).rejects.toThrow(
       LLMResponseError
     );
+  });
+});
+
+describe("photo import", () => {
+  const imageReply = JSON.stringify({
+    transcription: "LEMON CAKE\n225g butter\nCream and bake.",
+    title: "Lemon Cake",
+    description: "A loaf cake",
+    suggestedTags: ["baking"],
+    variants: [
+      {
+        servings: 8,
+        prepTimeMinutes: 20,
+        cookTimeMinutes: 45,
+        ingredients: [{ name: "butter", quantity: 225, unit: "g", notes: null }],
+        steps: [{ instruction: "Cream and bake for {{timer:45}}." }],
+      },
+    ],
+  });
+
+  it("transcribes and structures in a single call", async () => {
+    const fake = new FakeLLM(imageReply);
+    setLLM(fake);
+
+    const { extractedText, recipe } = await parseRecipeFromImages([
+      "data:image/jpeg;base64,AAAA",
+      "data:image/jpeg;base64,BBBB",
+    ]);
+
+    // Both images go to the one request, and the transcription is kept as source text.
+    expect(fake.lastRequest!.images).toHaveLength(2);
+    expect(extractedText).toContain("225g butter");
+    expect(hasVariants(recipe)).toBe(false);
+    expect(recipe.title).toBe("Lemon Cake");
+  });
+
+  it("asks for the transcription before the structured fields", async () => {
+    const fake = new FakeLLM(imageReply);
+    setLLM(fake);
+
+    await parseRecipeFromImages(["data:image/jpeg;base64,AAAA"]);
+
+    const properties = fake.lastJsonSchema!.properties as Record<string, unknown>;
+    expect(Object.keys(properties)[0]).toBe("transcription");
+  });
+});
+
+describe("url import", () => {
+  it("sends structured metadata rather than the page markup", async () => {
+    const fake = new FakeLLM(singleVariantReply);
+    setLLM(fake);
+
+    const ld = {
+      "@type": "Recipe",
+      name: "Pancakes",
+      recipeIngredient: ["250g flour", "2 eggs"],
+      recipeInstructions: [{ "@type": "HowToStep", text: "Whisk and fry." }],
+      prepTime: "PT5M",
+    };
+    const html = `<html><head><script type="application/ld+json">${JSON.stringify(
+      ld
+    )}</script></head><body>${"<div>filler</div>".repeat(2000)}</body></html>`;
+
+    const { extractedText } = await parseRecipeFromUrl(html);
+
+    const sent = fake.lastRequest!.messages[0].content;
+    expect(sent).toContain("schema.org Recipe metadata");
+    expect(sent).toContain("250g flour");
+    expect(sent).not.toContain("filler");
+    expect(sent.length).toBeLessThan(html.length / 10);
+    // The trimmed source, not the raw HTML, is what gets stored on the recipe.
+    expect(extractedText).not.toContain("<div>");
   });
 });
 

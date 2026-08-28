@@ -89,6 +89,23 @@ export const recipeExtractionSchema = z.object({
     ),
 });
 
+/**
+ * Photo import, done as one call. `transcription` comes first deliberately: the
+ * model fills the fields in schema order, so it reads the images out in full
+ * before extracting structure from what it read.
+ */
+export const recipeFromImagesSchema = z
+  .object({
+    transcription: z
+      .string()
+      .describe(
+        "Everything the images say about this recipe, transcribed verbatim and " +
+          "combined across all of them in reading order. Reproduce the source " +
+          "rather than converting or improving it"
+      ),
+  })
+  .extend(recipeExtractionSchema.shape);
+
 /** A recipe the assistant proposes during chat, tagged with how it relates to the original. */
 export const proposedRecipeSchema = parsedRecipeSchema.extend({
   variantType: z
@@ -104,6 +121,7 @@ export type ParsedIngredient = z.infer<typeof ingredientSchema>;
 export type ParsedStep = z.infer<typeof stepSchema>;
 export type ParsedPortionVariant = z.infer<typeof parsedPortionVariantSchema>;
 export type RecipeExtraction = z.infer<typeof recipeExtractionSchema>;
+export type RecipeFromImages = z.infer<typeof recipeFromImagesSchema>;
 export type ProposedRecipe = z.infer<typeof proposedRecipeSchema>;
 
 /**

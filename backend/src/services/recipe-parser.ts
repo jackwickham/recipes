@@ -1,5 +1,6 @@
 import {
   recipeExtractionSchema,
+  recipeFromImagesSchema,
   parsedRecipeSchema,
   type ParsedRecipe,
   type ParsedRecipeResult,
@@ -9,8 +10,11 @@ import {
 import { getLLM } from "./llm/index.js";
 import { ReasoningLevel } from "./llm/interface.js";
 import { getTagsForPrompt } from "../db/queries.js";
+import { extractRecipeSource } from "./source-extract.js";
 import {
-  IMAGE_EXTRACT_PROMPT,
+  JSON_LD_SOURCE_NOTE,
+  PAGE_TEXT_SOURCE_NOTE,
+  recipeFromImagesPrompt,
   recipeGeneratePrompt,
   recipeParsePrompt,
   recipeScalePrompt,
@@ -54,32 +58,57 @@ export async function parseRecipeFromText(
   return fromExtraction(extraction);
 }
 
+/**
+ * Photos are transcribed and structured in one call: the schema asks for the
+ * transcription first, so the model still reads the images out in full before
+ * extracting from them, but we pay for one round trip instead of two.
+ */
 export async function parseRecipeFromImages(
   imagesBase64: string[],
   onProgress?: ProgressCallback
 ): Promise<{ extractedText: string; recipe: ParsedRecipeResult }> {
-  onProgress?.(
-    "extracting",
-    `Extracting text from ${imagesBase64.length} image(s)...`
-  );
+  onProgress?.("extracting", `Reading ${imagesBase64.length} image(s)...`);
 
-  const extractedText = await getLLM().completeText({
-    messages: [{ role: "user", content: IMAGE_EXTRACT_PROMPT }],
+  const { transcription, ...extraction } = await getLLM().completeStructured({
+    systemPrompt: recipeFromImagesPrompt(getTagsForPrompt()),
+    messages: [
+      { role: "user", content: "Extract the recipe from these images." },
+    ],
     images: imagesBase64,
+    schema: recipeFromImagesSchema,
+    schemaName: "recipe_from_images",
     options: { reasoning: ReasoningLevel.LOW },
   });
 
-  const recipe = await parseRecipeFromText(extractedText, onProgress);
-  return { extractedText, recipe };
+  return { extractedText: transcription, recipe: fromExtraction(extraction) };
 }
 
+/**
+ * Pull the recipe out of the page before the model sees it. Sending raw HTML cost
+ * hundreds of kilobytes per import and buried the recipe in markup; schema.org
+ * JSON-LD, where a site publishes it, is both smaller and exact.
+ */
 export async function parseRecipeFromUrl(
   html: string,
   onProgress?: ProgressCallback
 ): Promise<{ extractedText: string; recipe: ParsedRecipeResult }> {
-  // The HTML itself becomes the source text
-  const recipe = await parseRecipeFromText(html, onProgress);
-  return { extractedText: html, recipe };
+  const source = extractRecipeSource(html);
+
+  onProgress?.(
+    "extracting",
+    source.kind === "json-ld"
+      ? "Found structured recipe data..."
+      : "Extracting recipe text from the page..."
+  );
+
+  const note =
+    source.kind === "json-ld" ? JSON_LD_SOURCE_NOTE : PAGE_TEXT_SOURCE_NOTE;
+  const recipe = await parseRecipeFromText(
+    `${note}\n\n${source.text}`,
+    onProgress
+  );
+
+  return { extractedText: source.text, recipe };
 }
 
 export async function generateRecipeFromPrompt(

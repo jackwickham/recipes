@@ -43,6 +43,11 @@ npm run start
   in a prompt - add a `.describe()` to the schema field instead
 - Prompts live in `backend/src/services/prompts.ts`, composed from shared fragments so
   house style (metric, fan oven, British English, timer markers) is stated once
+- URL imports never send raw HTML. `backend/src/services/source-extract.ts` pulls
+  schema.org/Recipe JSON-LD out of the page, falling back to stripped page text, and
+  the result is both what the model sees and what is stored as `source_text`
+- Photo imports are a single vision call: `recipeFromImagesSchema` asks for the
+  transcription first, then the structured recipe, so one round trip does both
 - Chat uses tool calling: the model replies in prose and optionally calls
   `propose_recipe` to offer a modified recipe (`backend/src/routes/chat.ts`)
 - `setLLM()` from `backend/src/services/llm/index.ts` substitutes the LLM in tests;
