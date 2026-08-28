@@ -16,25 +16,25 @@ export function getLLM(): LLM {
       const apiKey = secrets.google?.apiKey;
       if (!apiKey) {
         throw new Error(
-          "Google API key not found. Set it in your secrets file."
+          "Google API key not found. Set it in your secrets file.",
         );
       }
       llmInstance = new GoogleLLM(
         apiKey,
         config.llm.textModel,
-        config.llm.imageModel
+        config.llm.imageModel,
       );
     } else if (config.llm.provider === "openai") {
       const apiKey = secrets.openai?.apiKey;
       if (!apiKey) {
         throw new Error(
-          "OpenAI API key not found. Set it in your secrets file."
+          "OpenAI API key not found. Set it in your secrets file.",
         );
       }
       llmInstance = new OpenAILLM(
         apiKey,
         config.llm.textModel,
-        config.llm.imageModel
+        config.llm.imageModel,
       );
     } else {
       throw new Error(`Unknown LLM provider: ${config.llm.provider}`);

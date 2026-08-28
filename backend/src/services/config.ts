@@ -26,7 +26,10 @@ export interface Secrets {
 
 const CONFIG_PATH = "./config.yml";
 
-const DEFAULT_MODELS: Record<LLMProvider, { textModel: string; imageModel: string }> = {
+const DEFAULT_MODELS: Record<
+  LLMProvider,
+  { textModel: string; imageModel: string }
+> = {
   google: {
     textModel: "gemini-3-flash-preview",
     imageModel: "gemini-3-pro-image-preview",
@@ -58,14 +61,17 @@ export function loadConfig(): Config {
 
   if (!(provider in DEFAULT_MODELS)) {
     throw new Error(
-      `Unknown LLM provider "${provider}". Supported providers: ${Object.keys(DEFAULT_MODELS).join(", ")}`
+      `Unknown LLM provider "${provider}". Supported providers: ${Object.keys(DEFAULT_MODELS).join(", ")}`,
     );
   }
 
   return {
     port: parsed.port ?? 3000,
     database: {
-      path: process.env.DATABASE_PATH ?? parsed.database?.path ?? "./data/recipes.db",
+      path:
+        process.env.DATABASE_PATH ??
+        parsed.database?.path ??
+        "./data/recipes.db",
     },
     llm: {
       provider,
