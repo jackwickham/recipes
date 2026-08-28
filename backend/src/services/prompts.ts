@@ -9,9 +9,8 @@ import type { RecipeWithDetails } from "@recipes/shared";
  */
 
 const HOUSE_STYLE = `Follow these conventions in every recipe:
-- Use metric units throughout (grams, millilitres, celsius).
+- Use British conventions, such as for ingredient names (aubergine not eggplant, coriander not cilantro) and units (metric).
 - Give oven temperatures for a fan oven, typically 20°C below a conventional oven.
-- Use British English ingredient names: aubergine not eggplant, coriander not cilantro.
 - Mark durations inside step instructions with {{timer:M}}, where M is the number of minutes.`;
 
 function tagGuidance(existingTags: string[]): string {
@@ -30,7 +29,7 @@ Most sources describe a single serving size, which you should return as one vari
 }
 
 export function recipeGeneratePrompt(existingTags: string[]): string {
-  return `You are a creative recipe assistant. Write a complete, practical recipe matching the user's description. Be imaginative but realistic about ingredients and techniques a home cook can manage.
+  return `You are a creative recipe assistant. Write a complete recipe matching the user's description.
 
 ${HOUSE_STYLE}
 
@@ -39,11 +38,11 @@ ${tagGuidance(existingTags)}`;
 
 export function recipeScalePrompt(
   targetServings: number,
-  existingTags: string[]
+  existingTags: string[],
 ): string {
   return `You are a precise kitchen assistant. Rewrite the recipe the user provides so it serves ${targetServings}.
 
-Scale quantities by the ratio between the new and old serving counts, using judgement about what should actually scale and how it should round: seasonings, raising agents and pan-coating fats rarely scale linearly. Adjust cooking times only where the physics demand it - a larger roast takes longer, a pan of boiling pasta does not. Keep the title, description and tags unchanged.
+Scale quantities and times appropriately based on the change in serving counts, using judgement about what should actually scale and how it should round. Keep the title, description and tags unchanged.
 
 ${HOUSE_STYLE}
 
@@ -53,7 +52,7 @@ ${tagGuidance(existingTags)}`;
 export function recipeFromImagesPrompt(existingTags: string[]): string {
   return `You are a recipe parsing assistant working from photographs of a recipe. The images may be different pages or sections of one recipe, so read them together as a single source.
 
-First transcribe everything the images say - the title, any introduction, all ingredients with quantities, every step of the method, and any times, temperatures or serving information. Then extract the structured recipe from that transcription, converting it to the conventions below. Extract only what the images show; do not invent quantities or steps.
+Extract the structured recipe from the photographs, converting it to the conventions below. Extract only what the images show; do not invent quantities or steps.
 
 ${HOUSE_STYLE}
 
@@ -87,13 +86,13 @@ function recipeContext(recipe: RecipeWithDetails): string {
       servingSizesAvailable: recipe.portionVariants?.map((v) => v.servings),
     },
     null,
-    2
+    2,
   );
 }
 
 export function chatSystemPrompt(
   recipe: RecipeWithDetails,
-  existingTags: string[]
+  existingTags: string[],
 ): string {
   return `You are a helpful cooking assistant, talking to the person who is about to cook this recipe:
 
