@@ -1,5 +1,7 @@
 // Core types
 
+import type { ParsedRecipePayload, RecipeExtraction } from "./schemas.js";
+
 export type VariantType = "portion" | "content";
 
 export interface Recipe {
@@ -100,36 +102,19 @@ export interface CreateRecipeInput {
   tags?: TagInput[];
 }
 
-// LLM parsed recipe output
-export interface ParsedRecipe {
-  title: string;
-  description: string | null;
-  servings: number | null;
-  prepTimeMinutes: number | null;
-  cookTimeMinutes: number | null;
-  ingredients: IngredientInput[];
-  steps: StepInput[];
-  suggestedTags: string[];
-  parentRecipeId?: number | null; // For chat-generated variants
-  variantType?: VariantType | null; // For chat-generated portion variants
-}
+// LLM parsed recipe output. The payload shape is defined once, as a zod schema,
+// in ./schemas.ts - it drives the provider JSON Schema and runtime validation too.
+export * from "./schemas.js";
 
-// Single portion variant from parser (shares title/description/tags with siblings)
-export interface ParsedPortionVariant {
-  servings: number;
-  prepTimeMinutes: number | null;
-  cookTimeMinutes: number | null;
-  ingredients: IngredientInput[];
-  steps: StepInput[];
-}
+// A recipe as parsed by the LLM, plus the variant linkage the server attaches
+// afterwards (the model is never asked to invent recipe IDs).
+export type ParsedRecipe = ParsedRecipePayload & {
+  parentRecipeId?: number | null;
+  variantType?: VariantType | null;
+};
 
 // Multi-variant parser output when recipe has multiple portion sizes
-export interface ParsedRecipeWithVariants {
-  title: string;
-  description: string | null;
-  suggestedTags: string[];
-  variants: ParsedPortionVariant[];
-}
+export type ParsedRecipeWithVariants = RecipeExtraction;
 
 // Union type for parser output
 export type ParsedRecipeResult = ParsedRecipe | ParsedRecipeWithVariants;

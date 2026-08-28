@@ -26,24 +26,12 @@ describe("Backend Integration Smoke Tests", () => {
     expect(Array.isArray(response.body)).toBe(true);
   });
 
-  it("should handle stateless chat", async () => {
-    // We need a recipe to exist for the chat to work. 
-    // Since this is a smoke test, we'll try to get the first recipe ID if any exist.
-    const recipesRes = await request(app).get("/api/recipes");
-    if (recipesRes.body.length > 0) {
-      const recipeId = recipesRes.body[0].id;
-      const response = await request(app)
-        .post(`/api/recipes/${recipeId}/chat`)
-        .send({
-          message: "Hello",
-          history: []
-        });
-      
-      // We expect 200 if the LLM is mocked or configured, 
-      // but in integration tests it might fail if keys are missing.
-      // However, we want to test that the ROUTE exists and handles the request.
-      // If it returns 500 because of LLM keys, that's still "better" than 404.
-      expect(response.status).not.toBe(404);
-    }
+  // Chat behaviour itself is covered in llm.test.ts, against an injected LLM.
+  it("should 404 chat for a recipe that does not exist", async () => {
+    const response = await request(app)
+      .post("/api/recipes/999999/chat")
+      .send({ message: "Hello", history: [] });
+
+    expect(response.status).toBe(404);
   });
 });

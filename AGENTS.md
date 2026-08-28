@@ -21,7 +21,7 @@ npm run start
 
 **Monorepo with npm workspaces**: `shared/`, `backend/`, `frontend/`
 
-- **shared**: TypeScript types used by both backend and frontend (`@recipes/shared`)
+- **shared**: TypeScript types and the zod recipe schemas used by both backend and frontend (`@recipes/shared`)
 - **backend**: Express server with SQLite database, serves the built frontend in production
 - **frontend**: Preact SPA with Vite, proxies API calls to backend in development
 
@@ -35,7 +35,18 @@ npm run start
 
 **Key patterns**:
 
-- LLM interface in `backend/src/services/llm/interface.ts` - add new providers here
+- LLM interface in `backend/src/services/llm/interface.ts` - add new providers here by
+  extending `BaseLLM`, which handles schema conversion, JSON parsing and validation
+- Recipe payload shapes are defined once as zod schemas in `shared/src/schemas.ts`. They
+  generate the TypeScript types, the JSON Schema sent to the provider to constrain
+  generation, and the runtime validation of the reply. Never hand-write a JSON example
+  in a prompt - add a `.describe()` to the schema field instead
+- Prompts live in `backend/src/services/prompts.ts`, composed from shared fragments so
+  house style (metric, fan oven, British English, timer markers) is stated once
+- Chat uses tool calling: the model replies in prose and optionally calls
+  `propose_recipe` to offer a modified recipe (`backend/src/routes/chat.ts`)
+- `setLLM()` from `backend/src/services/llm/index.ts` substitutes the LLM in tests;
+  see `backend/tests/llm.test.ts` for the fake
 - Database queries are synchronous (better-sqlite3) in `backend/src/db/queries.ts`
 - Frontend state is local component state, no global store
 - Cooking list persisted to localStorage via `useCookingList` hook

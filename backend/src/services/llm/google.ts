@@ -1,33 +1,62 @@
-import { GoogleGenAI, ThinkingLevel } from "@google/genai";
-import { type LLM, type LLMOptions, type Message, ReasoningLevel } from "./interface.js";
+import { GoogleGenAI, ThinkingLevel, type Content, type Part } from "@google/genai";
+import {
+  BaseLLM,
+  ReasoningLevel,
+  type LLMRequest,
+  type ToolRequest,
+  type ToolResponse,
+} from "./interface.js";
 
-export class GoogleLLM implements LLM {
+export class GoogleLLM extends BaseLLM {
   private client: GoogleGenAI;
   private textModel: string;
   private imageModel: string;
 
   constructor(apiKey: string, textModel: string, imageModel: string) {
+    super();
     this.client = new GoogleGenAI({ apiKey });
     this.textModel = textModel;
     this.imageModel = imageModel;
+  }
+
+  private modelFor(request: LLMRequest): string {
+    return request.images?.length ? this.imageModel : this.textModel;
   }
 
   private parseBase64Image(imageBase64: string): {
     mimeType: string;
     data: string;
   } {
-    let mimeType = "image/jpeg";
-    let data = imageBase64;
+    const match = imageBase64.match(/^data:([^;]+);base64,/);
+    if (match) {
+      return {
+        mimeType: match[1],
+        data: imageBase64.replace(/^data:[^;]+;base64,/, ""),
+      };
+    }
+    return { mimeType: "image/jpeg", data: imageBase64 };
+  }
 
-    if (imageBase64.startsWith("data:")) {
-      const match = imageBase64.match(/^data:([^;]+);base64,/);
-      if (match) {
-        mimeType = match[1];
-        data = imageBase64.replace(/^data:[^;]+;base64,/, "");
+  /** Images ride along with the final user message. */
+  private buildContents(request: LLMRequest): Content[] {
+    const contents: Content[] = request.messages.map((msg) => ({
+      role: msg.role === "assistant" ? "model" : "user",
+      parts: [{ text: msg.content }] as Part[],
+    }));
+
+    if (request.images?.length) {
+      const imageParts: Part[] = request.images.map((image) => ({
+        inlineData: this.parseBase64Image(image),
+      }));
+      const last = contents[contents.length - 1];
+      if (last?.role === "user") {
+        last.parts = [...(last.parts ?? []), ...imageParts];
+      } else {
+        contents.push({ role: "user", parts: imageParts });
       }
     }
 
-    return { mimeType, data };
+    return contents;
   }
 
   private getThinkingLevel(
@@ -63,88 +92,68 @@ export class GoogleLLM implements LLM {
     }
   }
 
-  private getConfig(model: string, options?: LLMOptions) {
-    const thinkingLevel = this.getThinkingLevel(model, options?.reasoning);
-    if (!thinkingLevel) return undefined;
-
+  private baseConfig(model: string, request: LLMRequest) {
+    const thinkingLevel = this.getThinkingLevel(model, request.options?.reasoning);
     return {
-      thinkingConfig: {
-        thinkingLevel,
-      },
+      ...(request.systemPrompt
+        ? { systemInstruction: request.systemPrompt }
+        : {}),
+      ...(thinkingLevel ? { thinkingConfig: { thinkingLevel } } : {}),
     };
   }
 
-  async complete(prompt: string, options?: LLMOptions): Promise<string> {
+  async completeText(request: LLMRequest): Promise<string> {
+    const model = this.modelFor(request);
     const response = await this.client.models.generateContent({
-      model: this.textModel,
-      contents: prompt,
-      config: this.getConfig(this.textModel, options),
+      model,
+      contents: this.buildContents(request),
+      config: this.baseConfig(model, request),
     });
     return response.text ?? "";
   }
 
-  async completeChat(
-    systemPrompt: string,
-    messages: Message[],
-    options?: LLMOptions
+  protected async completeJson(
+    request: LLMRequest,
+    schema: { name: string; jsonSchema: Record<string, unknown> }
   ): Promise<string> {
-    const contents = messages.map((msg) => ({
-      role: msg.role === "assistant" ? "model" : "user",
-      parts: [{ text: msg.content }],
-    }));
-
+    const model = this.modelFor(request);
     const response = await this.client.models.generateContent({
-      model: this.textModel,
-      contents,
+      model,
+      contents: this.buildContents(request),
       config: {
-        ...this.getConfig(this.textModel, options),
-        systemInstruction: systemPrompt,
+        ...this.baseConfig(model, request),
+        responseMimeType: "application/json",
+        responseJsonSchema: schema.jsonSchema,
       },
     });
     return response.text ?? "";
   }
 
-  async completeWithImage(
-    prompt: string,
-    imageBase64: string,
-    options?: LLMOptions
-  ): Promise<string> {
-    const { mimeType, data } = this.parseBase64Image(imageBase64);
-
+  async completeWithTools(request: ToolRequest): Promise<ToolResponse> {
+    const model = this.modelFor(request);
     const response = await this.client.models.generateContent({
-      model: this.imageModel,
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: prompt }, { inlineData: { mimeType, data } }],
-        },
-      ],
-      config: this.getConfig(this.imageModel, options),
+      model,
+      contents: this.buildContents(request),
+      config: {
+        ...this.baseConfig(model, request),
+        tools: [
+          {
+            functionDeclarations: request.tools.map((tool) => ({
+              name: tool.name,
+              description: tool.description,
+              parametersJsonSchema: tool.parameters,
+            })),
+          },
+        ],
+      },
     });
 
-    return response.text ?? "";
-  }
-
-  async completeWithImages(
-    prompt: string,
-    imagesBase64: string[],
-    options?: LLMOptions
-  ): Promise<string> {
-    const parts: Array<
-      { text: string } | { inlineData: { mimeType: string; data: string } }
-    > = [{ text: prompt }];
-
-    for (const imageBase64 of imagesBase64) {
-      const { mimeType, data } = this.parseBase64Image(imageBase64);
-      parts.push({ inlineData: { mimeType, data } });
-    }
-
-    const response = await this.client.models.generateContent({
-      model: this.imageModel,
-      contents: [{ role: "user", parts }],
-      config: this.getConfig(this.imageModel, options),
-    });
-
-    return response.text ?? "";
+    return {
+      text: response.text ?? "",
+      toolCalls: (response.functionCalls ?? []).map((call) => ({
+        name: call.name ?? "",
+        arguments: call.args,
+      })),
+    };
   }
 }

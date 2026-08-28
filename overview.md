@@ -106,11 +106,15 @@ Set the `SECRETS_FILE` environment variable to specify a custom path (defaults t
 ### Key Design Decisions
 
 1. **Monorepo with npm workspaces** - Simple dependency management with shared types
-2. **No authentication** - Personal use only, run on local network or behind auth proxy
-3. **Synchronous SQLite** - Simpler code, adequate for single-user scenario
-4. **No photo storage** - Photos processed by vision LLM, only extracted text stored
-5. **Client-side filtering** - All recipes loaded at once, filtered in browser
-6. **Local Storage for User State** - Chat history and cooking lists are stored in the browser, keeping the backend stateless and simple
+2. **Schema-constrained LLM output** - zod schemas in `shared/src/schemas.ts` are the single
+   source of truth: they generate the TypeScript types, the JSON Schema that constrains
+   generation at the provider, and the runtime validation of the reply. Chat uses tool
+   calling rather than a JSON envelope, so conversational answers stay plain prose
+3. **No authentication** - Personal use only, run on local network or behind auth proxy
+4. **Synchronous SQLite** - Simpler code, adequate for single-user scenario
+5. **No photo storage** - Photos processed by vision LLM, only extracted text stored
+6. **Client-side filtering** - All recipes loaded at once, filtered in browser
+7. **Local Storage for User State** - Chat history and cooking lists are stored in the browser, keeping the backend stateless and simple
 
 ---
 
@@ -191,7 +195,8 @@ recipes/
 │       │   └── chat.ts           # Recipe chat endpoints
 │       ├── services/
 │       │   ├── llm/              # LLM interface and providers
-│       │   ├── recipe-parser.ts  # Parsing prompts
+│       │   ├── prompts.ts        # Composed prompt fragments
+│       │   ├── recipe-parser.ts  # Structured extraction/generation calls
 │       │   └── config.ts         # YAML config loading
 │       └── db/
 │           ├── schema.sql        # Database schema
@@ -222,7 +227,9 @@ recipes/
 │           └── scaling.ts        # Quantity marker formatting
 │
 ├── shared/
-│   └── types.ts                  # Shared TypeScript interfaces
+│   └── src/
+│       ├── index.ts              # Shared TypeScript interfaces
+│       └── schemas.ts            # zod recipe schemas (types + JSON Schema + validation)
 │
 ├── Dockerfile
 ├── docker-compose.yml
