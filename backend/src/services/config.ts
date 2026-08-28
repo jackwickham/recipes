@@ -1,5 +1,6 @@
 import { readFileSync, existsSync } from "fs";
 import { parse } from "yaml";
+import type { LLMTask } from "./llm/interface.js";
 
 export interface Config {
   port: number;
@@ -8,10 +9,12 @@ export interface Config {
   };
   llm: {
     provider: LLMProvider;
-    textModel: string;
-    imageModel: string;
+    models: TaskModels;
   };
 }
+
+/** One model per {@link LLMTask}. */
+export type TaskModels = Record<LLMTask, string>;
 
 export type LLMProvider = "google" | "openai";
 
@@ -26,17 +29,15 @@ export interface Secrets {
 
 const CONFIG_PATH = "./config.yml";
 
-const DEFAULT_MODELS: Record<
-  LLMProvider,
-  { textModel: string; imageModel: string }
-> = {
+/** Cheap-but-capable models by default; point `chat` at a stronger one in config.yml. */
+const DEFAULT_MODELS: Record<LLMProvider, TaskModels> = {
   google: {
-    textModel: "gemini-3-flash-preview",
-    imageModel: "gemini-3-pro-image-preview",
+    import: "gemini-3-flash-preview",
+    chat: "gemini-3-flash-preview",
   },
   openai: {
-    textModel: "gpt-5.6-terra",
-    imageModel: "gpt-5.6-terra",
+    import: "gpt-5.6-terra",
+    chat: "gpt-5.6-terra",
   },
 };
 
@@ -50,13 +51,17 @@ export function loadConfig(): Config {
       },
       llm: {
         provider: "google",
-        ...DEFAULT_MODELS.google,
+        models: DEFAULT_MODELS.google,
       },
     };
   }
 
   const content = readFileSync(CONFIG_PATH, "utf-8");
-  const parsed = parse(content) as Partial<Config>;
+  const parsed = parse(content) as {
+    port?: number;
+    database?: { path?: string };
+    llm?: { provider?: LLMProvider; models?: Partial<TaskModels> };
+  };
   const provider = parsed.llm?.provider ?? "google";
 
   if (!(provider in DEFAULT_MODELS)) {
@@ -75,8 +80,10 @@ export function loadConfig(): Config {
     },
     llm: {
       provider,
-      textModel: parsed.llm?.textModel ?? DEFAULT_MODELS[provider].textModel,
-      imageModel: parsed.llm?.imageModel ?? DEFAULT_MODELS[provider].imageModel,
+      models: {
+        import: parsed.llm?.models?.import ?? DEFAULT_MODELS[provider].import,
+        chat: parsed.llm?.models?.chat ?? DEFAULT_MODELS[provider].chat,
+      },
     },
   };
 }

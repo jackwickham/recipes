@@ -1,4 +1,5 @@
 import { GoogleGenAI, ThinkingLevel, type Content, type Part } from "@google/genai";
+import type { TaskModels } from "../config.js";
 import {
   BaseLLM,
   ReasoningLevel,
@@ -9,18 +10,16 @@ import {
 
 export class GoogleLLM extends BaseLLM {
   private client: GoogleGenAI;
-  private textModel: string;
-  private imageModel: string;
+  private models: TaskModels;
 
-  constructor(apiKey: string, textModel: string, imageModel: string) {
+  constructor(apiKey: string, models: TaskModels) {
     super();
     this.client = new GoogleGenAI({ apiKey });
-    this.textModel = textModel;
-    this.imageModel = imageModel;
+    this.models = models;
   }
 
   private modelFor(request: LLMRequest): string {
-    return request.images?.length ? this.imageModel : this.textModel;
+    return this.models[request.task];
   }
 
   private parseBase64Image(imageBase64: string): {

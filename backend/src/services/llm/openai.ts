@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import type { ResponseInput } from "openai/resources/responses/responses";
+import type { TaskModels } from "../config.js";
 import {
   BaseLLM,
   ReasoningLevel,
@@ -14,18 +15,16 @@ type ContentPart =
 
 export class OpenAILLM extends BaseLLM {
   private client: OpenAI;
-  private textModel: string;
-  private imageModel: string;
+  private models: TaskModels;
 
-  constructor(apiKey: string, textModel: string, imageModel: string) {
+  constructor(apiKey: string, models: TaskModels) {
     super();
     this.client = new OpenAI({ apiKey });
-    this.textModel = textModel;
-    this.imageModel = imageModel;
+    this.models = models;
   }
 
   private modelFor(request: LLMRequest): string {
-    return request.images?.length ? this.imageModel : this.textModel;
+    return this.models[request.task];
   }
 
   private toDataUrl(imageBase64: string): string {

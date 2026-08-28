@@ -17,7 +17,7 @@ function createLLM(): LLM {
     if (!apiKey) {
       throw new Error("Google API key not found. Set it in your secrets file.");
     }
-    return new GoogleLLM(apiKey, config.llm.textModel, config.llm.imageModel);
+    return new GoogleLLM(apiKey, config.llm.models);
   }
 
   if (config.llm.provider === "openai") {
@@ -25,7 +25,7 @@ function createLLM(): LLM {
     if (!apiKey) {
       throw new Error("OpenAI API key not found. Set it in your secrets file.");
     }
-    return new OpenAILLM(apiKey, config.llm.textModel, config.llm.imageModel);
+    return new OpenAILLM(apiKey, config.llm.models);
   }
 
   throw new Error(`Unknown LLM provider: ${config.llm.provider}`);

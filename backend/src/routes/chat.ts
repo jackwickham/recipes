@@ -58,6 +58,7 @@ chatRouter.post("/:id/chat", async (req, res) => {
     ];
 
     const response = await getLLM().completeWithTools({
+      task: "chat",
       systemPrompt: chatSystemPrompt(recipe, getTagsForPrompt()),
       messages,
       tools: [PROPOSE_RECIPE_TOOL],

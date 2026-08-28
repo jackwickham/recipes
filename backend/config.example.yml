@@ -6,12 +6,16 @@ database:
 llm:
   # provider: google | openai
   provider: google
-  textModel: gemini-3-flash-preview
-  imageModel: gemini-3-pro-image-preview
+  models:
+    # Extracting recipes from text, web pages and photos
+    import: gemini-3-flash-preview
+    # Chat, and the recipes it writes or rescales
+    chat: gemini-3-pro-preview
 
 # For OpenAI, use:
 # llm:
 #   provider: openai
 #   # gpt-5.6-sol (flagship), gpt-5.6-terra (balanced), gpt-5.6-luna (cheapest)
-#   textModel: gpt-5.6-terra
-#   imageModel: gpt-5.6-terra
+#   models:
+#     import: gpt-5.6-terra
+#     chat: gpt-5.6-sol

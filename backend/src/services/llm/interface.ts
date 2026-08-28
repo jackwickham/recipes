@@ -18,10 +18,20 @@ export interface Message {
 }
 
 /**
+ * What a request is for, which picks the configured model. Importing is
+ * extraction from a source the user supplied (text, a page or photos); chat
+ * covers the conversational assistant and the recipes it writes from scratch or
+ * rescales, which benefit from a stronger model.
+ */
+export type LLMTask = "import" | "chat";
+
+/**
  * A single turn-taking request. Images, when supplied, are attached to the final
- * user message and cause the provider's configured image model to be used.
+ * user message; every model in use accepts them, so they do not affect which
+ * model is chosen.
  */
 export interface LLMRequest {
+  task: LLMTask;
   systemPrompt?: string;
   messages: Message[];
   images?: string[];

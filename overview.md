@@ -66,19 +66,25 @@ database:
 
 llm:
   provider: google                  # google | openai
-  textModel: gemini-2.0-flash       # For recipe parsing and chat
-  imageModel: gemini-2.0-flash      # For photo OCR
+  models:
+    import: gemini-3-flash-preview  # Recipe extraction from text, pages and photos
+    chat: gemini-3-pro-preview      # Chat, plus generated and rescaled recipes
 ```
+
+Models are chosen by task, not by input type - every model in use accepts images,
+so photo imports go to the `import` model like any other import. Imports are
+extraction from a source the user supplied and run well on a cheap model; chat and
+the recipes it writes from scratch or rescales are the ones worth spending on.
 
 #### LLM providers
 
 | Provider | Models |
 | --- | --- |
-| `google` | Any Gemini model, e.g. `gemini-3-flash-preview`, `gemini-3-pro-image-preview` |
+| `google` | Any Gemini model, e.g. `gemini-3-flash-preview`, `gemini-3-pro-preview` |
 | `openai` | `gpt-5.6-sol` (flagship), `gpt-5.6-terra` (balanced), `gpt-5.6-luna` (cost-optimised). All three accept text and images. |
 
-If `textModel`/`imageModel` are omitted they default to the provider's defaults
-(`gemini-3-flash-preview`/`gemini-3-pro-image-preview` for Google, `gpt-5.6-terra` for OpenAI).
+If either model is omitted it defaults to the provider's default
+(`gemini-3-flash-preview` for Google, `gpt-5.6-terra` for OpenAI).
 
 ### secrets.yml
 

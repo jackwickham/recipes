@@ -87,6 +87,17 @@ const multiVariantReply = JSON.stringify({
   ],
 });
 
+const plainRecipeReply = JSON.stringify({
+  title: "Apple Pie",
+  description: "A pie",
+  suggestedTags: ["baking"],
+  servings: 6,
+  prepTimeMinutes: 20,
+  cookTimeMinutes: 40,
+  ingredients: [{ name: "apples", quantity: 500, unit: "g", notes: null }],
+  steps: [{ instruction: "Bake for {{timer:40}}." }],
+});
+
 afterEach(() => setLLM(null));
 
 describe("structured recipe parsing", () => {
@@ -125,6 +136,18 @@ describe("structured recipe parsing", () => {
     expect(schema.$schema).toBeUndefined();
     expect(schema.additionalProperties).toBe(false);
     expect(schema.required).toContain("variants");
+  });
+
+  it("tags imports and generation with the task that picks the model", async () => {
+    const importer = new FakeLLM(singleVariantReply);
+    setLLM(importer);
+    await parseRecipeFromText("some recipe text");
+    expect(importer.lastRequest!.task).toBe("import");
+
+    const generator = new FakeLLM(plainRecipeReply);
+    setLLM(generator);
+    await generateRecipeFromPrompt("a pie");
+    expect(generator.lastRequest!.task).toBe("chat");
   });
 
   it("rejects a reply that does not match the schema", async () => {
@@ -170,6 +193,8 @@ describe("photo import", () => {
 
     // Both images go to the one request, and the transcription is kept as source text.
     expect(fake.lastRequest!.images).toHaveLength(2);
+    // Photos are an import like any other - they do not switch models.
+    expect(fake.lastRequest!.task).toBe("import");
     expect(extractedText).toContain("225g butter");
     expect(hasVariants(recipe)).toBe(false);
     expect(recipe.title).toBe("Lemon Cake");
@@ -321,6 +346,7 @@ describe("chat tool calling", () => {
       .post(`/api/recipes/${recipeId}/chat`)
       .send({ message: "hello", history });
 
+    expect(fake.lastRequest!.task).toBe("chat");
     const sent = fake.lastRequest!.messages;
     // 20 history turns plus the new message, with the malformed entries dropped.
     expect(sent).toHaveLength(21);

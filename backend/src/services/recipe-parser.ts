@@ -48,6 +48,7 @@ export async function parseRecipeFromText(
   onProgress?.("parsing", "Parsing recipe details...");
 
   const extraction = await getLLM().completeStructured({
+    task: "import",
     systemPrompt: recipeParsePrompt(getTagsForPrompt()),
     messages: [{ role: "user", content: text }],
     schema: recipeExtractionSchema,
@@ -70,6 +71,7 @@ export async function parseRecipeFromImages(
   onProgress?.("extracting", `Reading ${imagesBase64.length} image(s)...`);
 
   const { transcription, ...extraction } = await getLLM().completeStructured({
+    task: "import",
     systemPrompt: recipeFromImagesPrompt(getTagsForPrompt()),
     messages: [
       { role: "user", content: "Extract the recipe from these images." },
@@ -115,6 +117,7 @@ export async function generateRecipeFromPrompt(
   userPrompt: string
 ): Promise<ParsedRecipe> {
   return getLLM().completeStructured({
+    task: "chat",
     systemPrompt: recipeGeneratePrompt(getTagsForPrompt()),
     messages: [{ role: "user", content: userPrompt }],
     schema: parsedRecipeSchema,
@@ -148,6 +151,7 @@ export async function generateScaledRecipe(
   );
 
   return getLLM().completeStructured({
+    task: "chat",
     systemPrompt: recipeScalePrompt(targetServings, getTagsForPrompt()),
     messages: [{ role: "user", content: recipeJson }],
     schema: parsedRecipeSchema,
