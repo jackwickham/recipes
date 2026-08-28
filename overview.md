@@ -124,28 +124,18 @@ Set the `SECRETS_FILE` environment variable to specify a custom path (defaults t
 
 ## Recipe Markers
 
-Recipes use special markers in step instructions that enable interactive features:
-
-### Quantity Markers
-
-Format: `{{qty:VALUE:UNIT}}` - Displays quantities inline
-
-```
-Add {{qty:500:g}} flour          → "Add 500g flour"
-Beat {{qty:3:}} eggs             → "Beat 3 eggs" (no unit for countable items)
-Pour in {{qty:200:ml}} milk      → "Pour in 200ml milk"
-```
-
-**Note**: Quantity markers are stored with exact values per portion variant. When a recipe has multiple portion sizes (e.g., 2, 4, 6 servings), each variant stores the precise quantities for that serving size. Switching portions updates the URL with a query parameter (`?servings=N`) to show the selected portion.
-
 ### Timer Markers
 
-Format: `{{timer:MINUTES}}` - Renders a "Start Timer" button
+Step instructions may contain `{{timer:MINUTES}}`, which renders a "Start Timer" button:
 
 ```
 Simmer for {{timer:15}}          → Shows a 15-minute timer button
 Bake for {{timer:45}}            → Shows a 45-minute timer button
 ```
+
+Quantities are written into step text literally ("Add 500g flour"). Each portion
+variant stores the exact quantities for its serving size, so switching portions loads
+that variant (`?servings=N`) rather than substituting values at render time.
 
 ---
 
@@ -161,15 +151,19 @@ POST   /api/recipes/with-variants    # Create recipe with portion variants
 PUT    /api/recipes/:id              # Update recipe
 DELETE /api/recipes/:id              # Delete recipe
 PATCH  /api/recipes/:id/rating       # Update rating only
+POST   /api/recipes/:id/scale        # Ask the LLM to rescale to N servings
 ```
 
 ### Import
 
+Imports stream progress as server-sent events and save the recipe themselves,
+responding with the new recipe IDs.
+
 ```
-POST   /api/import/url           # Import from URL (fetches page, extracts recipe)
-POST   /api/import/photos        # Import from photos (base64 images)
-POST   /api/import/text          # Import from pasted text
-POST   /api/import/generate      # Generate recipe from text prompt
+POST   /api/import/url/queue     # Import from URL (fetches page, extracts recipe)
+POST   /api/import/photos/queue  # Import from photos (base64 images)
+POST   /api/import/text/queue    # Import from pasted text
+POST   /api/import/generate      # Generate recipe from text prompt (plain JSON)
 ```
 
 ### Chat

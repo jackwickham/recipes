@@ -102,16 +102,6 @@ export class GoogleLLM extends BaseLLM {
     };
   }
 
-  async completeText(request: LLMRequest): Promise<string> {
-    const model = this.modelFor(request);
-    const response = await this.client.models.generateContent({
-      model,
-      contents: this.buildContents(request),
-      config: this.baseConfig(model, request),
-    });
-    return response.text ?? "";
-  }
-
   protected async completeJson(
     request: LLMRequest,
     schema: { name: string; jsonSchema: Record<string, unknown> }

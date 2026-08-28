@@ -61,11 +61,14 @@ npm run start
 
 Step instructions contain markers that the frontend renders interactively:
 
-- `{{qty:VALUE:UNIT}}` - Quantity display (e.g., `{{qty:500:g}}` for 500g). When a recipe has multiple portion variants, each variant stores exact quantities.
 - `{{timer:MINUTES}}` - Timer button (e.g., `{{timer:15}}` for 15 min)
 
+Quantities are written into step text literally ("Add 500g flour"); each portion
+variant stores its own exact quantities, so there is nothing to substitute at render
+time.
+
 Parsing: `frontend/src/utils/scaling.ts`
-Generation: `backend/src/services/recipe-parser.ts` (LLM prompt)
+Generation: the `stepSchema` field description in `shared/src/schemas.ts`
 
 ## Portion Variants
 

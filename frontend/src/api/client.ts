@@ -80,79 +80,6 @@ export async function getTags(): Promise<string[]> {
   return request<string[]>("/tags");
 }
 
-export async function importFromUrl(url: string): Promise<ImportResult> {
-  return request<ImportResult>("/import/url", {
-    method: "POST",
-    body: JSON.stringify({ url }),
-  });
-}
-
-// Helper to process SSE streams - reduces code duplication
-async function processSSEStream<T>(
-  response: Response,
-  onProgress: (progress: ImportProgress) => void,
-  errorMessage: string = "Request failed"
-): Promise<T> {
-  if (!response.ok) {
-    const error = await response
-      .json()
-      .catch(() => ({ error: response.statusText }));
-    throw new Error(error.error || errorMessage);
-  }
-
-  const reader = response.body?.getReader();
-  if (!reader) {
-    throw new Error("No response body");
-  }
-
-  const decoder = new TextDecoder();
-  let buffer = "";
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() || "";
-
-    for (const line of lines) {
-      if (line.startsWith("data: ")) {
-        const data = JSON.parse(line.slice(6));
-        onProgress({ stage: data.stage, message: data.message });
-
-        if (data.stage === "complete") {
-          return data.data as T;
-        }
-        if (data.stage === "error") {
-          throw new Error(data.message || errorMessage);
-        }
-      }
-    }
-  }
-
-  throw new Error("Stream ended without completion");
-}
-
-export async function importFromUrlWithProgress(
-  url: string,
-  onProgress: (progress: ImportProgress) => void
-): Promise<ImportResult> {
-  const response = await fetch(`${API_BASE}/import/url/stream`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url }),
-  });
-  return processSSEStream<ImportResult>(response, onProgress, "Import failed");
-}
-
-export async function importFromPhotos(images: string[]): Promise<ImportResult> {
-  return request<ImportResult>("/import/photos", {
-    method: "POST",
-    body: JSON.stringify({ images }),
-  });
-}
-
 export interface ImportProgress {
   stage: "fetching" | "extracting" | "parsing" | "saving" | "complete" | "error";
   message: string;
@@ -161,37 +88,6 @@ export interface ImportProgress {
 export interface QueueImportResult {
   recipeIds: number[];
   title: string;
-}
-
-export async function importFromPhotosWithProgress(
-  images: string[],
-  onProgress: (progress: ImportProgress) => void
-): Promise<ImportResult> {
-  const response = await fetch(`${API_BASE}/import/photos/stream`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ images }),
-  });
-  return processSSEStream<ImportResult>(response, onProgress, "Import failed");
-}
-
-export async function importFromText(text: string): Promise<ImportResult> {
-  return request<ImportResult>("/import/text", {
-    method: "POST",
-    body: JSON.stringify({ text }),
-  });
-}
-
-export async function importFromTextWithProgress(
-  text: string,
-  onProgress: (progress: ImportProgress) => void
-): Promise<ImportResult> {
-  const response = await fetch(`${API_BASE}/import/text/stream`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text }),
-  });
-  return processSSEStream<ImportResult>(response, onProgress, "Processing failed");
 }
 
 export async function generateRecipe(prompt: string): Promise<ImportResult> {

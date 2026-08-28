@@ -35,7 +35,7 @@ export interface Step {
   id: number;
   recipeId: number;
   position: number;
-  instruction: string; // Contains {{qty:N}} and {{timer:M}} markers
+  instruction: string; // May contain {{timer:M}} markers
 }
 
 export interface Tag {

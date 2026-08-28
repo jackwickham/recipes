@@ -57,8 +57,6 @@ export interface ToolRequest extends LLMRequest {
 }
 
 export interface LLM {
-  /** Free-form text reply. */
-  completeText(request: LLMRequest): Promise<string>;
   /** Schema-constrained reply, parsed and validated against `schema`. */
   completeStructured<T>(request: StructuredRequest<T>): Promise<T>;
   /** Text reply that may also invoke any of the supplied tools. */
@@ -78,7 +76,6 @@ export class LLMResponseError extends Error {
  * methods; schema conversion, JSON parsing and validation happen once, here.
  */
 export abstract class BaseLLM implements LLM {
-  abstract completeText(request: LLMRequest): Promise<string>;
   abstract completeWithTools(request: ToolRequest): Promise<ToolResponse>;
 
   /** Issue a request constrained to `jsonSchema` and return the raw JSON text. */

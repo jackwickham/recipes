@@ -32,11 +32,6 @@ class FakeLLM extends BaseLLM {
     super();
   }
 
-  async completeText(request: LLMRequest): Promise<string> {
-    this.lastRequest = request;
-    return this.jsonReply;
-  }
-
   protected async completeJson(
     request: LLMRequest,
     schema: { name: string; jsonSchema: Record<string, unknown> }

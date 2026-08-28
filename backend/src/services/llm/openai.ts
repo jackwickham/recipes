@@ -80,16 +80,6 @@ export class OpenAILLM extends BaseLLM {
     }
   }
 
-  async completeText(request: LLMRequest): Promise<string> {
-    const response = await this.client.responses.create({
-      model: this.modelFor(request),
-      instructions: request.systemPrompt,
-      input: this.buildInput(request),
-      reasoning: this.getReasoning(request),
-    });
-    return response.output_text ?? "";
-  }
-
   protected async completeJson(
     request: LLMRequest,
     schema: { name: string; jsonSchema: Record<string, unknown> }
