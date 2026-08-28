@@ -66,19 +66,25 @@ database:
 
 llm:
   provider: google                  # google | openai
-  textModel: gemini-2.0-flash       # For recipe parsing and chat
-  imageModel: gemini-2.0-flash      # For photo OCR
+  models:
+    import: gemini-3-flash-preview  # Recipe extraction from text, pages and photos
+    chat: gemini-3-pro-preview      # Chat, plus generated and rescaled recipes
 ```
+
+Models are chosen by task, not by input type - every model in use accepts images,
+so photo imports go to the `import` model like any other import. Imports are
+extraction from a source the user supplied and run well on a cheap model; chat and
+the recipes it writes from scratch or rescales are the ones worth spending on.
 
 #### LLM providers
 
 | Provider | Models |
 | --- | --- |
-| `google` | Any Gemini model, e.g. `gemini-3-flash-preview`, `gemini-3-pro-image-preview` |
+| `google` | Any Gemini model, e.g. `gemini-3-flash-preview`, `gemini-3-pro-preview` |
 | `openai` | `gpt-5.6-sol` (flagship), `gpt-5.6-terra` (balanced), `gpt-5.6-luna` (cost-optimised). All three accept text and images. |
 
-If `textModel`/`imageModel` are omitted they default to the provider's defaults
-(`gemini-3-flash-preview`/`gemini-3-pro-image-preview` for Google, `gpt-5.6-terra` for OpenAI).
+If either model is omitted it defaults to the provider's default
+(`gemini-3-flash-preview` for Google, `gpt-5.6-terra` for OpenAI).
 
 ### secrets.yml
 
@@ -106,38 +112,36 @@ Set the `SECRETS_FILE` environment variable to specify a custom path (defaults t
 ### Key Design Decisions
 
 1. **Monorepo with npm workspaces** - Simple dependency management with shared types
-2. **No authentication** - Personal use only, run on local network or behind auth proxy
-3. **Synchronous SQLite** - Simpler code, adequate for single-user scenario
-4. **No photo storage** - Photos processed by vision LLM, only extracted text stored
-5. **Client-side filtering** - All recipes loaded at once, filtered in browser
-6. **Local Storage for User State** - Chat history and cooking lists are stored in the browser, keeping the backend stateless and simple
+2. **Schema-constrained LLM output** - zod schemas in `shared/src/schemas.ts` are the single
+   source of truth: they generate the TypeScript types, the JSON Schema that constrains
+   generation at the provider, and the runtime validation of the reply. Chat uses tool
+   calling rather than a JSON envelope, so conversational answers stay plain prose
+3. **No authentication** - Personal use only, run on local network or behind auth proxy
+4. **Synchronous SQLite** - Simpler code, adequate for single-user scenario
+5. **No photo storage** - Photos processed by vision LLM in a single call, only the
+   transcription stored
+6. **Recipes extracted before the LLM sees them** - URL imports read schema.org/Recipe
+   JSON-LD where a site publishes it and fall back to stripped page text, so the model
+   receives a few kilobytes of recipe rather than a few hundred of markup
+7. **Client-side filtering** - All recipes loaded at once, filtered in browser
+8. **Local Storage for User State** - Chat history and cooking lists are stored in the browser, keeping the backend stateless and simple
 
 ---
 
 ## Recipe Markers
 
-Recipes use special markers in step instructions that enable interactive features:
-
-### Quantity Markers
-
-Format: `{{qty:VALUE:UNIT}}` - Displays quantities inline
-
-```
-Add {{qty:500:g}} flour          → "Add 500g flour"
-Beat {{qty:3:}} eggs             → "Beat 3 eggs" (no unit for countable items)
-Pour in {{qty:200:ml}} milk      → "Pour in 200ml milk"
-```
-
-**Note**: Quantity markers are stored with exact values per portion variant. When a recipe has multiple portion sizes (e.g., 2, 4, 6 servings), each variant stores the precise quantities for that serving size. Switching portions updates the URL with a query parameter (`?servings=N`) to show the selected portion.
-
 ### Timer Markers
 
-Format: `{{timer:MINUTES}}` - Renders a "Start Timer" button
+Step instructions may contain `{{timer:MINUTES}}`, which renders a "Start Timer" button:
 
 ```
 Simmer for {{timer:15}}          → Shows a 15-minute timer button
 Bake for {{timer:45}}            → Shows a 45-minute timer button
 ```
+
+Quantities are written into step text literally ("Add 500g flour"). Each portion
+variant stores the exact quantities for its serving size, so switching portions loads
+that variant (`?servings=N`) rather than substituting values at render time.
 
 ---
 
@@ -153,15 +157,19 @@ POST   /api/recipes/with-variants    # Create recipe with portion variants
 PUT    /api/recipes/:id              # Update recipe
 DELETE /api/recipes/:id              # Delete recipe
 PATCH  /api/recipes/:id/rating       # Update rating only
+POST   /api/recipes/:id/scale        # Ask the LLM to rescale to N servings
 ```
 
 ### Import
 
+Imports stream progress as server-sent events and save the recipe themselves,
+responding with the new recipe IDs.
+
 ```
-POST   /api/import/url           # Import from URL (fetches page, extracts recipe)
-POST   /api/import/photos        # Import from photos (base64 images)
-POST   /api/import/text          # Import from pasted text
-POST   /api/import/generate      # Generate recipe from text prompt
+POST   /api/import/url/queue     # Import from URL (fetches page, extracts recipe)
+POST   /api/import/photos/queue  # Import from photos (base64 images)
+POST   /api/import/text/queue    # Import from pasted text
+POST   /api/import/generate      # Generate recipe from text prompt (plain JSON)
 ```
 
 ### Chat
@@ -191,7 +199,9 @@ recipes/
 │       │   └── chat.ts           # Recipe chat endpoints
 │       ├── services/
 │       │   ├── llm/              # LLM interface and providers
-│       │   ├── recipe-parser.ts  # Parsing prompts
+│       │   ├── prompts.ts        # Composed prompt fragments
+│       │   ├── source-extract.ts # JSON-LD / page text extraction for URL import
+│       │   ├── recipe-parser.ts  # Structured extraction/generation calls
 │       │   └── config.ts         # YAML config loading
 │       └── db/
 │           ├── schema.sql        # Database schema
@@ -222,7 +232,9 @@ recipes/
 │           └── scaling.ts        # Quantity marker formatting
 │
 ├── shared/
-│   └── types.ts                  # Shared TypeScript interfaces
+│   └── src/
+│       ├── index.ts              # Shared TypeScript interfaces
+│       └── schemas.ts            # zod recipe schemas (types + JSON Schema + validation)
 │
 ├── Dockerfile
 ├── docker-compose.yml

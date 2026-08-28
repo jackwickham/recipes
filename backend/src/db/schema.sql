@@ -58,14 +58,6 @@ CREATE TABLE IF NOT EXISTS tags (
 CREATE INDEX IF NOT EXISTS idx_tags_recipe ON tags(recipe_id);
 CREATE INDEX IF NOT EXISTS idx_tags_tag ON tags(tag);
 
--- Chat history for recipe conversations
-CREATE TABLE IF NOT EXISTS chat_messages (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    recipe_id INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
-    role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
-    content TEXT NOT NULL,
-    metadata TEXT, -- JSON blob for suggested recipes, etc.
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_chat_recipe ON chat_messages(recipe_id, created_at);
+-- Chat history lives in the browser's localStorage, not here. Databases created
+-- before that decision still carry an unused chat_messages table; it is left
+-- alone rather than dropped.

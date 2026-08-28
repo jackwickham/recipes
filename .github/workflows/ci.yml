@@ -30,6 +30,31 @@ jobs:
       - name: Test
         run: npm test
 
+      # The unit tests import the app from source, so they cannot catch a runtime
+      # asset missing from dist. Boot the built server the way production does.
+      - name: Smoke test built server
+        env:
+          DATABASE_PATH: /tmp/ci-smoke.db
+        run: |
+          node backend/dist/index.js &
+          server_pid=$!
+          trap 'kill $server_pid 2>/dev/null || true' EXIT
+
+          for _ in $(seq 1 30); do
+            if curl -sf http://localhost:3000/api/tags > /dev/null; then
+              echo "Server responded"
+              exit 0
+            fi
+            if ! kill -0 $server_pid 2>/dev/null; then
+              echo "Server exited during startup"
+              exit 1
+            fi
+            sleep 1
+          done
+
+          echo "Server did not respond within 30s"
+          exit 1
+
   push-image:
     needs: build
     runs-on: ubuntu-latest

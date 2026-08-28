@@ -39,13 +39,11 @@ COPY backend/package.json ./backend/
 # Install production dependencies only
 RUN npm ci --omit=dev --workspace=shared --workspace=backend
 
-# Copy built files
+# Copy built files. The backend build copies schema.sql into dist itself, so there
+# is nothing to bring across by hand.
 COPY --from=builder /app/shared/dist ./shared/dist
 COPY --from=builder /app/backend/dist ./backend/dist
 COPY --from=builder /app/frontend/dist ./frontend/dist
-
-# Copy schema file for database initialization
-COPY backend/src/db/schema.sql ./backend/dist/db/schema.sql
 
 # Create data directory for SQLite database
 RUN mkdir -p /app/data
