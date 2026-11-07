@@ -6,6 +6,9 @@ Personal recipe web app with LLM-powered import. See [overview.md](overview.md) 
 
 ## Commands
 
+Use Node.js 24, matching CI and Docker. Tests use a temporary database per worker;
+`DATABASE_PATH` must take precedence even when `config.yml` is absent.
+
 ```bash
 # Development (runs both frontend and backend)
 npm run dev
