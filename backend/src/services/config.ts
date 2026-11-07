@@ -47,7 +47,7 @@ export function loadConfig(): Config {
     return {
       port: 3000,
       database: {
-        path: "./data/recipes.db",
+        path: process.env.DATABASE_PATH ?? "./data/recipes.db",
       },
       llm: {
         provider: "google",

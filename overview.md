@@ -17,7 +17,7 @@ A personal recipe web app with LLM-powered import, quantity scaling, and cooking
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 24+ (CI and Docker use Node.js 24)
 - An API key for one of the supported LLM providers: Google (Gemini) or OpenAI (GPT-5.6)
 
 ### Development
