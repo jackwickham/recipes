@@ -14,7 +14,7 @@
     "@recipes/shared": "*",
     "better-sqlite3": "^13.0.3",
     "express": "^5.3.0",
-    "openai": "^7.10.0",
+    "openai": "^7.55.0",
     "yaml": "^2.9.0",
     "zod": "^4.6.7"
   },
